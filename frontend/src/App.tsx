@@ -17,7 +17,7 @@ function App() {
         setLoading(true);
         try {
             // 1. Błyskawiczne pobranie głównych danych rynkowych
-            const response = await fetch('/api/stocks');
+            const response = await fetch('https://gpw-analyst.onrender.com/api/stocks');
             if (!response.ok) throw new Error('Failed to fetch stocks');
             const data: Stock[] = await response.json();
 
@@ -31,7 +31,7 @@ function App() {
             // Pobieramy prognozy SEKWENCYJNIE (jedna po drugiej), by nie zablokowało nas Yahoo
             for (const stock of data) {
                 try {
-                    const predRes = await fetch(`/api/stock/${stock.ticker}/predict`);
+                    const predRes = await fetch(`https://gpw-analyst.onrender.com/api/stock/${stock.ticker}/predict`);
                     if (predRes.ok) {
                         const prediction = await predRes.json();
                         // Aktualizujemy tabelę na bieżąco, spółka po spółce!
