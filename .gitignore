@@ -1,0 +1,12 @@
+# Node
+frontend/node_modules/
+frontend/dist/
+
+# Python
+backend/venv/
+backend/__pycache__/
+*.pyc
+.env
+
+# Baza danych lokalna (SQLite)
+backend/gpw_data.db

@@ -1,0 +1,15 @@
+{
+    "python.defaultInterpreterPath": "C:/Users/tbojc/AppData/Local/Python/pythoncore-3.14-64/python.exe",
+    "python.analysis.extraPaths": [
+        "${workspaceFolder}/backend",
+        "C:/Users/tbojc/AppData/Local/Python/pythoncore-3.14-64/Lib/site-packages",
+        "C:/Users/tbojc/AppData/Local/Python/pythoncore-3.14-64/Lib"
+    ],
+    "python.autoComplete.extraPaths": [
+        "${workspaceFolder}/backend",
+        "C:/Users/tbojc/AppData/Local/Python/pythoncore-3.14-64/Lib/site-packages",
+        "C:/Users/tbojc/AppData/Local/Python/pythoncore-3.14-64/Lib"
+    ],
+    "python.analysis.autoSearchPaths": true,
+    "python.analysis.typeCheckingMode": "basic"
+}

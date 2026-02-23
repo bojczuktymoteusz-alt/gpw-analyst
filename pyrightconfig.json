@@ -1,0 +1,12 @@
+{
+    "include": [
+        "backend"
+    ],
+    "extraPaths": [
+        "backend",
+        "C:/Users/tbojc/AppData/Local/Python/pythoncore-3.14-64/Lib/site-packages",
+        "C:/Users/tbojc/AppData/Local/Python/pythoncore-3.14-64/Lib"
+    ],
+    "pythonPlatform": "Windows",
+    "pythonVersion": "3.14"
+}
