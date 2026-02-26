@@ -47,5 +47,12 @@ def predict_stock(ticker: str):
         return {"error": "Insufficient data for prediction"}
     return prediction
 
+# NOWY ENDPOINT: Służy do ręcznego uruchamienia pobierania danych z poziomu przeglądarki
+@app.get("/api/update")
+def update_data():
+    print("Uruchamiam pobieranie danych na serwerze...")
+    get_all_stocks()
+    return {"status": "Sukces", "message": "Dane GPW zostały pobrane i zapisane w bazie!"}
+
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
