@@ -256,3 +256,7 @@ def predict_stock_price(ticker, forecast_days=7):
     except Exception as e:
         print(f"Error in prediction for {ticker}: {e}")
         return None
+if __name__ == "__main__":
+    print("🚀 Rozpoczynam pobieranie danych z GPW...")
+    get_all_stocks()
+    print("✅ Gotowe! Dane wysłane do bazy.")
