@@ -1,5 +1,6 @@
 import yfinance as yf
 import pandas as pd
+import time
 import sqlite3
 import numpy as np
 from sklearn.linear_model import LinearRegression
@@ -133,17 +134,18 @@ def get_all_stocks():
     conn.close()
 
     if tickers_to_fetch:
-        print(f"Parallel fetching {len(tickers_to_fetch)} tickers...")
-        with ThreadPoolExecutor(max_workers=len(tickers_to_fetch)) as executor:
-            fetched_data = list(executor.map(fetch_single_ticker, tickers_to_fetch))
-            
+        print(f"Sequential fetching {len(tickers_to_fetch)} tickers with 2s sleep...")
+        
         conn = get_db_connection()
-        for data in fetched_data:
+        for ticker in tickers_to_fetch:
+            data = fetch_single_ticker(ticker)
             if data:
                 conn.execute("""INSERT OR REPLACE INTO stocks (ticker, name, price, pe, pbv, roe, div_yield, operating_margin, ebitda, total_debt, total_cash, recommendation, market_cap, beta, sector, last_updated) 
                                 VALUES (:ticker, :name, :price, :pe, :pbv, :roe, :div_yield, :operating_margin, :ebitda, :total_debt, :total_cash, :recommendation, :market_cap, :beta, :sector, :last_updated)""", data)
                 results.append(data)
-        conn.commit()
+                conn.commit()  # Commit after each ticker to ensure data is saved
+                print(f"Waiting 2 seconds before next request...")
+                time.sleep(2)
         conn.close()
 
     sector_pe_map = {}

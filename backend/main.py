@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from data_fetcher import get_all_stocks, get_stock_history, predict_stock_price
 from database import init_db
@@ -41,18 +41,4 @@ def read_stock_history(ticker: str, period: str = "1y"):
 @app.get("/api/stock/{ticker}/predict")
 def predict_stock(ticker: str):
     print(f"🧠 AI Engine: Calculating prediction for {ticker}...")
-    prediction = predict_stock_price(ticker)
-    if not prediction:
-        # Zamiast błędu 404, zwracamy info o braku danych, żeby frontend nie padł
-        return {"error": "Insufficient data for prediction"}
-    return prediction
-
-# NOWY ENDPOINT: Służy do ręcznego uruchamienia pobierania danych z poziomu przeglądarki
-@app.get("/api/update")
-def update_data():
-    print("Uruchamiam pobieranie danych na serwerze...")
-    get_all_stocks()
-    return {"status": "Sukces", "message": "Dane GPW zostały pobrane i zapisane w bazie!"}
-
-if __name__ == "__main__":
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    prediction = predict_stock_price
