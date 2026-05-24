@@ -1,0 +1,29 @@
+name: Codzienny Raport WIG20
+
+on:
+  schedule:
+    - cron: '0 15 * * 1-5'  # 17:00 czasu polskiego (UTC+2)
+  workflow_dispatch:          # możliwość ręcznego odpalenia
+
+jobs:
+  send-report:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout kodu
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Instalacja zależności
+        run: |
+          pip install requests matplotlib pandas python-dotenv yfinance scikit-learn numpy
+
+      - name: Wyślij raport
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          python discord_report.py
