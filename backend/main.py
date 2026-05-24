@@ -1,44 +1,57 @@
-from fastapi import FastAPI, HTTPException, BackgroundTasks
+from contextlib import asynccontextmanager
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from data_fetcher import get_all_stocks, get_stock_history, predict_stock_price
 from database import init_db
-import uvicorn
 
-app = FastAPI(title="GPW Analyst V2 - Enterprise Edition")
 
-# Pełne wsparcie CORS dla frontendu
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-# Inicjalizacja bazy Supabase przy starcie
-@app.on_event("startup")
-def on_startup():
-    print("🚀 System start-up: Initializing Supabase connection...")
+# BUG FIX: @app.on_event("startup") is deprecated since FastAPI 0.93.
+# Use the lifespan context manager instead.
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    print("🚀 GPW Analyst V2 – initializing SQLite database...")
     try:
         init_db()
         print("✅ Database ready.")
     except Exception as e:
         print(f"❌ Database initialization failed: {e}")
+    yield  # application runs here
+
+
+app = FastAPI(title="GPW Analyst V2", lifespan=lifespan)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],      # tighten in production
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 
 @app.get("/api/stocks")
 def read_stocks():
-    print("📡 Fetching all stocks...")
+    print("📡 /api/stocks called")
     return get_all_stocks()
+
 
 @app.get("/api/stock/{ticker}/history")
 def read_stock_history(ticker: str, period: str = "1y"):
-    print(f"📊 Fetching history for {ticker}...")
+    print(f"📊 /api/stock/{ticker}/history called (period={period})")
     data = get_stock_history(ticker, period)
     if not data:
-        raise HTTPException(status_code=404, detail="Stock history not found")
+        raise HTTPException(status_code=404, detail=f"No history found for {ticker}")
     return data
+
 
 @app.get("/api/stock/{ticker}/predict")
 def predict_stock(ticker: str):
-    print(f"🧠 AI Engine: Calculating prediction for {ticker}...")
-    prediction = predict_stock_price
+    # BUG FIX: original file was truncated – predict_stock_price was never called!
+    print(f"🧠 /api/stock/{ticker}/predict called")
+    prediction = predict_stock_price(ticker)
+    if prediction is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Could not generate prediction for {ticker} (insufficient data)",
+        )
+    return prediction

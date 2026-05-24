@@ -1,69 +1,82 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import StockTable from './components/StockTable';
+import ComparisonView from './components/ComparisonView';
 import { Stock } from './types';
 import { Moon, Sun, RefreshCw, TrendingUp, Activity } from 'lucide-react';
 
+// BUG FIX: API_URL jako stała modułu, nie przeliczana przy każdym renderze
+const API_URL =
+    window.location.hostname === 'localhost'
+        ? 'http://localhost:8000'
+        : 'https://gpw-analyst.onrender.com';
+
 function App() {
     const [stocks, setStocks] = useState<Stock[]>([]);
-    const [isDarkMode, setIsDarkMode] = useState(false);
+    const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
+        return localStorage.getItem('darkMode') === 'true';
+    });
     const [loading, setLoading] = useState(false);
     const [isPredicting, setIsPredicting] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [view, setView] = useState<'market' | 'compare'>('market');
+    const [selectedTickers, setSelectedTickers] = useState<string[]>([]);
 
-    // AUTOMATYCZNY WYBÓR ADRESU:
-    // Jeśli adres w przeglądarce to localhost -> używaj portu 8000
-    // W innym przypadku -> używaj adresu z Rendera
-    const API_URL = window.location.hostname === 'localhost'
-        ? "http://localhost:8000"
-        : "https://gpw-analyst.onrender.com";
+    const toggleSelection = (ticker: string) => {
+        setSelectedTickers(prev =>
+            prev.includes(ticker) ? prev.filter(t => t !== ticker) : [...prev, ticker]
+        );
+    };
 
+    // Synchronizacja dark mode z <html> i localStorage
     useEffect(() => {
-        fetchStocks();
-    }, []);
+        document.documentElement.classList.toggle('dark', isDarkMode);
+        localStorage.setItem('darkMode', String(isDarkMode));
+    }, [isDarkMode]);
 
-    // ... reszta funkcji fetchStocks pozostaje bez zmian ...
-
-    const fetchStocks = async () => {
-        // 1. Włączamy główny ekran ładowania (szronione szkło)
+    // BUG FIX: useCallback żeby fetchStocks nie było nową referencją przy każdym renderze
+    const fetchStocks = useCallback(async () => {
         setLoading(true);
+        setError(null);
         try {
-            // Pobranie listy spółek i podstawowych danych (Cena, P/E itp.)
             const response = await fetch(`${API_URL}/api/stocks`);
-            if (!response.ok) throw new Error('Failed to fetch stocks');
+            if (!response.ok) throw new Error(`Błąd serwera: ${response.status}`);
             const data: Stock[] = await response.json();
 
-            // Ustawiamy dane i zdejmujemy główny ekran ładowania, by pokazać tabelę
             setStocks(data);
             setLoading(false);
-
-            // 2. Uruchamiamy proces AI w tle (Progressive Loading)
             setIsPredicting(true);
 
-            // Pobieramy prognozy jedna po drugiej (Sequential), by nie przeciążyć serwera
+            // Prognozy AI pobierane sekwencyjnie (progressive loading)
             for (const stock of data) {
                 try {
                     const predRes = await fetch(`${API_URL}/api/stock/${stock.ticker}/predict`);
                     if (predRes.ok) {
                         const prediction = await predRes.json();
-                        // Aktualizacja tabeli w czasie rzeczywistym (spółka po spółce)
-                        setStocks(prevStocks => prevStocks.map(s =>
-                            s.ticker === stock.ticker ? { ...s, prediction } : s
-                        ));
+                        setStocks(prev =>
+                            prev.map(s =>
+                                s.ticker === stock.ticker ? { ...s, prediction } : s
+                            )
+                        );
                     }
                 } catch (e) {
                     console.error(`Prediction error for ${stock.ticker}:`, e);
                 }
-
-                // Małe opóźnienie dla stabilności połączenia
                 await new Promise(resolve => setTimeout(resolve, 300));
             }
-
-        } catch (error) {
-            console.error("Error fetching stocks:", error);
+        } catch (err) {
+            // BUG FIX: błąd teraz widoczny dla użytkownika
+            const msg = err instanceof Error ? err.message : 'Nieznany błąd';
+            setError(msg);
+            console.error('Error fetching stocks:', err);
             setLoading(false);
         } finally {
             setIsPredicting(false);
         }
-    };
+    }, []);
+
+    useEffect(() => {
+        fetchStocks();
+    }, [fetchStocks]);
 
     return (
         <div className={`min-h-screen transition-colors duration-500 ${isDarkMode ? 'bg-[#0b0f1a] text-slate-100' : 'bg-[#f8fafc] text-slate-900'}`}>
@@ -94,12 +107,15 @@ function App() {
                         <button
                             onClick={fetchStocks}
                             disabled={loading || isPredicting}
-                            className={`relative p-2.5 rounded-xl hover:scale-105 transition-all active:scale-95 ${isDarkMode ? 'bg-slate-800 text-slate-300 border border-white/5' : 'bg-white text-slate-600 border border-slate-200 shadow-sm'}`}
+                            title="Odśwież dane"
+                            className={`relative p-2.5 rounded-xl hover:scale-105 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed ${isDarkMode ? 'bg-slate-800 text-slate-300 border border-white/5' : 'bg-white text-slate-600 border border-slate-200 shadow-sm'}`}
                         >
+                            {/* BUG FIX: animacja spinnera tylko gdy faktycznie trwa loading */}
                             <RefreshCw size={20} className={(loading || isPredicting) ? 'animate-spin text-indigo-500' : ''} />
                         </button>
                         <button
-                            onClick={() => setIsDarkMode(!isDarkMode)}
+                            onClick={() => setIsDarkMode(d => !d)}
+                            title="Przełącz motyw"
                             className={`p-2.5 rounded-xl hover:scale-105 transition-all active:scale-95 ${isDarkMode ? 'bg-slate-800 text-amber-400 border border-white/5' : 'bg-white text-indigo-600 border border-slate-200 shadow-sm'}`}
                         >
                             {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
@@ -121,33 +137,68 @@ function App() {
                             )}
                         </div>
                         <h2 className="text-4xl font-extrabold tracking-tight mb-2">Analiza Rynku</h2>
-                        <p className={`${isDarkMode ? 'text-slate-400' : 'text-slate-500'} max-w-lg`}>
-                            Zaawansowana analityka i dane w czasie rzeczywistym z Giełdy Papierów Wartościowych. Monitoruj wyniki i wskaźniki wyceny.
+                        <p className={`${isDarkMode ? 'text-slate-400' : 'text-slate-500'} max-lg`}>
+                            Zaawansowana analityka i dane w czasie rzeczywistym z Giełdy Papierów Wartościowych.
                         </p>
                     </div>
 
                     <div className={`p-1 rounded-2xl flex gap-1 ${isDarkMode ? 'bg-slate-800/50' : 'bg-slate-200/50'}`}>
-                        <div className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all shadow-sm ${isDarkMode ? 'bg-indigo-600 text-white' : 'bg-white text-indigo-600'}`}>Widok Rynku</div>
-                        <div className={`px-4 py-2 rounded-xl text-sm font-semibold opacity-50 cursor-not-allowed`}>Porównanie</div>
+                        <button
+                            onClick={() => setView('market')}
+                            className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all ${view === 'market' ? (isDarkMode ? 'bg-indigo-600 text-white shadow-sm' : 'bg-white text-indigo-600 shadow-sm') : (isDarkMode ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-700')}`}
+                        >
+                            Widok Rynku
+                        </button>
+                        <button
+                            onClick={() => selectedTickers.length >= 2 && setView('compare')}
+                            disabled={selectedTickers.length < 2}
+                            className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all ${view === 'compare' ? (isDarkMode ? 'bg-indigo-600 text-white shadow-sm' : 'bg-white text-indigo-600 shadow-sm') : selectedTickers.length >= 2 ? (isDarkMode ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-700') : 'opacity-30 cursor-not-allowed'}`}
+                        >
+                            Porównanie{selectedTickers.length > 0 ? ` (${selectedTickers.length})` : ''}
+                        </button>
                     </div>
                 </div>
 
-                <div className="relative animate-in fade-in slide-in-from-bottom-4 duration-700 ease-out">
-                    {loading && (
-                        <div className={`absolute inset-0 z-50 flex items-center justify-center backdrop-blur-sm rounded-3xl border transition-all duration-500 ${isDarkMode ? 'bg-[#0b0f1a]/60 border-white/10' : 'bg-white/40 border-slate-200/50'}`}>
-                            <div className={`flex flex-col items-center p-8 rounded-3xl shadow-2xl border transform scale-100 animate-in zoom-in-95 duration-300 ${isDarkMode ? 'bg-slate-900 border-white/10 text-white' : 'bg-white border-slate-200 text-slate-800'}`}>
-                                <div className="relative flex items-center justify-center w-16 h-16 mb-5">
-                                    <div className="absolute inset-0 border-4 border-indigo-500/20 rounded-full"></div>
-                                    <div className="absolute inset-0 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
-                                    <Activity className="absolute text-indigo-500 animate-pulse" size={24} />
-                                </div>
-                                <h3 className="text-sm font-bold tracking-wide">Synchronizacja z rynkiem...</h3>
-                                <p className="text-[10px] font-bold uppercase tracking-[0.2em] opacity-50 mt-2 text-indigo-500">yFinance API / Podstawowe Dane</p>
-                            </div>
-                        </div>
-                    )}
+                {/* BUG FIX: baner błędu — wcześniej nieobecny */}
+                {error && (
+                    <div className="mb-6 p-4 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-500 text-sm font-semibold flex items-center gap-3">
+                        <span className="text-lg">⚠️</span>
+                        <span>Nie udało się pobrać danych: {error}</span>
+                        <button onClick={fetchStocks} className="ml-auto underline opacity-70 hover:opacity-100">Spróbuj ponownie</button>
+                    </div>
+                )}
 
-                    <StockTable stocks={stocks} />
+                <div className="relative animate-in fade-in slide-in-from-bottom-4 duration-700 ease-out">
+                    {view === 'compare' ? (
+                        <ComparisonView
+                            stocks={stocks.filter(s => selectedTickers.includes(s.ticker))}
+                            isDarkMode={isDarkMode}
+                            onRemove={toggleSelection}
+                            onBack={() => setView('market')}
+                        />
+                    ) : (
+                        <>
+                            {loading && (
+                                <div className={`absolute inset-0 z-50 flex items-center justify-center backdrop-blur-sm rounded-3xl border transition-all duration-500 ${isDarkMode ? 'bg-[#0b0f1a]/60 border-white/10' : 'bg-white/40 border-slate-200/50'}`}>
+                                    <div className={`flex flex-col items-center p-8 rounded-3xl shadow-2xl border transform scale-100 animate-in zoom-in-95 duration-300 ${isDarkMode ? 'bg-slate-900 border-white/10 text-white' : 'bg-white border-slate-200 text-slate-800'}`}>
+                                        <div className="relative flex items-center justify-center w-16 h-16 mb-5">
+                                            <div className="absolute inset-0 border-4 border-indigo-500/20 rounded-full"></div>
+                                            <div className="absolute inset-0 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+                                            <Activity className="absolute text-indigo-500 animate-pulse" size={24} />
+                                        </div>
+                                        <h3 className="text-sm font-bold tracking-wide">Synchronizacja z rynkiem...</h3>
+                                        <p className="text-[10px] font-bold uppercase tracking-[0.2em] opacity-50 mt-2 text-indigo-500">yFinance API / Podstawowe Dane</p>
+                                    </div>
+                                </div>
+                            )}
+                            <StockTable
+                                stocks={stocks}
+                                isDarkMode={isDarkMode}
+                                selectedTickers={selectedTickers}
+                                onToggleSelection={toggleSelection}
+                            />
+                        </>
+                    )}
                 </div>
             </main>
 
@@ -155,12 +206,12 @@ function App() {
                 <div className="container mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-4">
                     <p className="text-sm font-medium">&copy; {new Date().getFullYear()} GPW Analyst V2. Inteligencja klasy terminalowej.</p>
                     <div className="flex gap-6 text-xs font-bold uppercase tracking-widest">
-                        <a href="#" className="hover:text-indigo-500 transition-colors">Dokumentacja</a>
-                        <a href="#" className="hover:text-indigo-500 transition-colors">Wsparcie</a>
+                        <span className="opacity-30 cursor-not-allowed">Dokumentacja</span>
+                        <span className="opacity-30 cursor-not-allowed">Wsparcie</span>
                     </div>
                 </div>
             </footer>
-        </div >
+        </div>
     );
 }
 

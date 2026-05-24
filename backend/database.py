@@ -3,48 +3,53 @@ import sqlite3
 DB_NAME = "gpw_data.db"
 
 def init_db():
+    """Initialize the database with the full schema.
+    Uses ADD COLUMN migrations for backward compatibility with existing DBs.
+    """
     conn = sqlite3.connect(DB_NAME)
     c = conn.cursor()
-    c.execute('''CREATE TABLE IF NOT EXISTS stocks
-                 (ticker TEXT PRIMARY KEY, 
-                  price REAL, 
-                  pe REAL, 
-                  pbv REAL, 
-                  roe REAL, 
-                  div_yield REAL,
-                  last_updated TIMESTAMP)''')
-    
-    # Migration: Add 'name' and 'recommendation' columns if they don't exist
+
+    # Create table with full schema (new installs)
+    c.execute('''CREATE TABLE IF NOT EXISTS stocks (
+                    ticker          TEXT PRIMARY KEY,
+                    name            TEXT,
+                    price           REAL,
+                    pe              REAL,
+                    pbv             REAL,
+                    roe             REAL,
+                    div_yield       REAL,
+                    operating_margin REAL,
+                    ebitda          REAL,
+                    total_debt      REAL,
+                    total_cash      REAL,
+                    recommendation  TEXT,
+                    market_cap      REAL,
+                    beta            REAL,
+                    sector          TEXT,
+                    last_updated    TIMESTAMP
+                 )''')
+
+    # Migrations: add any columns missing from older DB files
     c.execute("PRAGMA table_info(stocks)")
-    columns = [col[1] for col in c.fetchall()]
-    if 'name' not in columns:
-        print("Migrating database: adding 'name' column...")
-        c.execute("ALTER TABLE stocks ADD COLUMN name TEXT")
-    if 'recommendation' not in columns:
-        print("Migrating database: adding 'recommendation' column...")
-        c.execute("ALTER TABLE stocks ADD COLUMN recommendation TEXT")
-    if 'market_cap' not in columns:
-        print("Migrating database: adding 'market_cap' column...")
-        c.execute("ALTER TABLE stocks ADD COLUMN market_cap REAL")
-    if 'beta' not in columns:
-        print("Migrating database: adding 'beta' column...")
-        c.execute("ALTER TABLE stocks ADD COLUMN beta REAL")
-    if 'sector' not in columns:
-        print("Migrating database: adding 'sector' column...")
-        c.execute("ALTER TABLE stocks ADD COLUMN sector TEXT")
-    if 'operating_margin' not in columns:
-        print("Migrating database: adding 'operating_margin' column...")
-        c.execute("ALTER TABLE stocks ADD COLUMN operating_margin REAL")
-    if 'ebitda' not in columns:
-        print("Migrating database: adding 'ebitda' column...")
-        c.execute("ALTER TABLE stocks ADD COLUMN ebitda REAL")
-    if 'total_debt' not in columns:
-        print("Migrating database: adding 'total_debt' column...")
-        c.execute("ALTER TABLE stocks ADD COLUMN total_debt REAL")
-    if 'total_cash' not in columns:
-        print("Migrating database: adding 'total_cash' column...")
-        c.execute("ALTER TABLE stocks ADD COLUMN total_cash REAL")
-        
+    existing_columns = {col[1] for col in c.fetchall()}
+
+    migrations = {
+        'name':             'ALTER TABLE stocks ADD COLUMN name TEXT',
+        'recommendation':   'ALTER TABLE stocks ADD COLUMN recommendation TEXT',
+        'market_cap':       'ALTER TABLE stocks ADD COLUMN market_cap REAL',
+        'beta':             'ALTER TABLE stocks ADD COLUMN beta REAL',
+        'sector':           'ALTER TABLE stocks ADD COLUMN sector TEXT',
+        'operating_margin': 'ALTER TABLE stocks ADD COLUMN operating_margin REAL',
+        'ebitda':           'ALTER TABLE stocks ADD COLUMN ebitda REAL',
+        'total_debt':       'ALTER TABLE stocks ADD COLUMN total_debt REAL',
+        'total_cash':       'ALTER TABLE stocks ADD COLUMN total_cash REAL',
+    }
+
+    for col, sql in migrations.items():
+        if col not in existing_columns:
+            print(f"DB migration: adding column '{col}'...")
+            c.execute(sql)
+
     conn.commit()
     conn.close()
 
