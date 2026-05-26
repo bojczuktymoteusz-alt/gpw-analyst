@@ -5,7 +5,7 @@ Funkcja wysyłająca codzienny raport WIG20 na kanał Discord przez Webhook.
 
 UŻYCIE:
   1. Wklej ten plik do swojego projektu (w głównym folderze App GPW).
-  2. Uzupełnij DISCORD_WEBHOOK_URL w pliku .env
+  2. Ustaw secret DISCORD_WEBHOOK_PL w GitHub Actions
   3. Wywołaj send_daily_report() po zamknięciu sesji giełdowej.
 
 WYMAGANIA:
@@ -22,12 +22,15 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from datetime import datetime
 
-from dotenv import load_dotenv
-load_dotenv()
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "backend"))
 
-WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL", "TWOJ_WEBHOOK_URL_TUTAJ")
+WEBHOOK_URL = os.environ.get("DISCORD_WEBHOOK_PL")
 
 
 def _fmt(val, fmt=".2f", suffix="", zero_dash=True):
@@ -209,9 +212,10 @@ def _build_embed(stocks: list) -> dict:
     }
 
 
-def send_daily_report(stocks: list = None, image_path: str = None) -> bool:
-    if WEBHOOK_URL == "TWOJ_WEBHOOK_URL_TUTAJ":
-        print("Blad: Nie ustawiono DISCORD_WEBHOOK_URL w pliku .env")
+def send_daily_report(stocks: list | None = None, image_path: str | None = None) -> bool:
+    webhook_url = WEBHOOK_URL
+    if not webhook_url:
+        print("Blad: Zmienna srodowiskowa DISCORD_WEBHOOK_PL nie jest ustawiona.")
         return False
 
     if stocks is None:
@@ -237,7 +241,7 @@ def send_daily_report(stocks: list = None, image_path: str = None) -> bool:
     print(f"Wysylam raport na Discord ({len(stocks)} spolek)...")
     try:
         response = requests.post(
-            WEBHOOK_URL,
+            webhook_url,
             data={"payload_json": json.dumps(payload)},
             files={"file": (filename, image_bytes, "image/png")},
             timeout=30,

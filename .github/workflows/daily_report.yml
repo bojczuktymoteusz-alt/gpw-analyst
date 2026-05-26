@@ -24,8 +24,8 @@ jobs:
 
       - name: Wyslij raport
         env:
-          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
-          DISCORD_WEBHOOK_URL_EN: ${{ secrets.DISCORD_WEBHOOK_URL_EN }}
+          DISCORD_WEBHOOK_PL: ${{ secrets.DISCORD_WEBHOOK_PL }}
+          DISCORD_WEBHOOK_ENG: ${{ secrets.DISCORD_WEBHOOK_ENG }}
         run: |
           python discord_report.py
           python discord_report_en.py

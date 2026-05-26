@@ -5,7 +5,7 @@ Sends daily WIG20 report in English to Discord via Webhook.
 
 USAGE:
   1. Place this file in your project root (next to discord_report.py).
-  2. Make sure DISCORD_WEBHOOK_URL_EN is set in your .env file.
+  2. Set the DISCORD_WEBHOOK_ENG secret in GitHub Actions.
   3. Call send_daily_report_en() after market close, or run directly.
 
 REQUIREMENTS:
@@ -22,12 +22,15 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from datetime import datetime
 
-from dotenv import load_dotenv
-load_dotenv()
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "backend"))
 
-WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL_EN", "YOUR_WEBHOOK_URL_HERE")
+WEBHOOK_URL = os.environ.get("DISCORD_WEBHOOK_ENG")
 
 
 def _fmt(val, fmt=".2f", suffix="", zero_dash=True):
@@ -224,17 +227,10 @@ def _build_embed(stocks: list) -> dict:
     }
 
 
-def send_daily_report_en(stocks: list = None, image_path: str = None) -> bool:
-    """
-    Sends the English WIG20 report to Discord.
-
-    Parameters
-    ----------
-    stocks     : list from get_all_stocks(). If None, fetches automatically.
-    image_path : optional path to a custom PNG/JPG screenshot.
-    """
-    if WEBHOOK_URL == "YOUR_WEBHOOK_URL_HERE":
-        print("Error: DISCORD_WEBHOOK_URL_EN not set in .env file.")
+def send_daily_report_en(stocks: list | None = None, image_path: str | None = None) -> bool:
+    webhook_url = WEBHOOK_URL
+    if not webhook_url:
+        print("Error: DISCORD_WEBHOOK_ENG environment variable is not set.")
         return False
 
     if stocks is None:
@@ -260,7 +256,7 @@ def send_daily_report_en(stocks: list = None, image_path: str = None) -> bool:
     print(f"Sending report to Discord ({len(stocks)} stocks)...")
     try:
         response = requests.post(
-            WEBHOOK_URL,
+            webhook_url,
             data={"payload_json": json.dumps(payload)},
             files={"file": (filename, image_bytes, "image/png")},
             timeout=30,
