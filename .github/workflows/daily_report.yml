@@ -26,4 +26,6 @@ jobs:
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
         run: |
+          run: |
           python discord_report.py
+          python discord_report_en.py
