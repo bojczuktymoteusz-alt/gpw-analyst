@@ -2,7 +2,7 @@ name: Codzienny Raport WIG20
 
 on:
   schedule:
-    - cron: '0 15 * * 1-5'  # 17:00 czasu polskiego (UTC+2)
+    - cron: '15 15 * * 1-5'  # 17:15 czasu polskiego (UTC+2)
   workflow_dispatch:          # możliwość ręcznego odpalenia
 
 jobs:
