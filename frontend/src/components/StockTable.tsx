@@ -24,8 +24,6 @@ const StockTable: React.FC<StockTableProps> = ({ stocks, isDarkMode, selectedTic
         return cap.toLocaleString('pl-PL');
     };
 
-    // BUG FIX: stabilna referencja przez useCallback nie jest konieczna w useMemo,
-    // ale funkcja musi być zdefiniowana przed useMemo które jej używa
     const calculateQualityScore = (stock: Stock): number => {
         let score = 0;
         if (stock.pe > 0 && stock.pe < 15) score += 25;
@@ -33,7 +31,27 @@ const StockTable: React.FC<StockTableProps> = ({ stocks, isDarkMode, selectedTic
         if (stock.roe > 0.15) score += 25;
         if (stock.div_yield > 0.04) score += 25;
         if (stock.beta && stock.beta < 1.0) score = Math.min(100, score + 5);
-        return score;
+
+        // Margines bezpieczenstwa dywidendy (payout_ratio)
+        const pr = stock.payout_ratio ?? null;
+        if (pr !== null) {
+            if (pr >= 0.30 && pr <= 0.70) score += 10;
+            else if (pr > 0.85) score -= 15;
+        }
+
+        // Weryfikator ROE przez zadluzenie (debt_to_equity)
+        const dte = stock.debt_to_equity ?? null;
+        if (dte !== null) {
+            const dteNorm = dte > 10 ? dte / 100 : dte;
+            if (dteNorm < 1.0) score += 5;
+            else if (dteNorm > 1.5) score -= 20;
+        }
+
+        // Premia za stabilny dochod dywidendowy
+        const tdiv = stock.trailing_div_yield ?? null;
+        if (tdiv && tdiv > 0 && pr !== null && pr < 0.75) score += 10;
+
+        return Math.max(0, Math.min(100, score));
     };
 
     const handleSort = (key: SortKey) => {
@@ -68,7 +86,6 @@ const StockTable: React.FC<StockTableProps> = ({ stocks, isDarkMode, selectedTic
                     aValue = a.prediction?.trend_pct ?? -999;
                     bValue = b.prediction?.trend_pct ?? -999;
                 } else {
-                    // BUG FIX: rzutowanie przez `any` zastąpione bezpiecznym dostępem
                     const rawA = a[sortKey as keyof Stock];
                     const rawB = b[sortKey as keyof Stock];
                     aValue = (rawA == null ? -999999 : rawA) as number | string;
@@ -92,17 +109,16 @@ const StockTable: React.FC<StockTableProps> = ({ stocks, isDarkMode, selectedTic
             : <ChevronDown size={14} className="inline-block ml-1 text-indigo-500" />;
     };
 
-    // BUG FIX: klasy warunkowe na podstawie isDarkMode prop zamiast polegania
-    // wyłącznie na klasach Tailwind `dark:` (które wymagają class="dark" na <html>)
     const surface = isDarkMode
         ? 'bg-slate-900/60 border-white/10 text-slate-100'
         : 'bg-white/70 border-slate-200 text-slate-900';
 
     const theadBg = isDarkMode ? 'bg-white/5' : 'bg-slate-50';
     const inputBg  = isDarkMode ? 'bg-white/5 border-white/10' : 'bg-black/5 border-slate-200';
+    const newColBg = isDarkMode ? 'bg-indigo-950/30' : 'bg-indigo-50/50';
 
     return (
-        <div className={`relative overflow-hidden rounded-3xl border shadow-2xl backdrop-blur-sm ${surface}`}>
+        <div className={`relative rounded-3xl border shadow-2xl backdrop-blur-sm ${surface}`}>
             <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 to-purple-500/5 pointer-events-none"></div>
 
             {/* Pasek wyszukiwarki */}
@@ -118,17 +134,16 @@ const StockTable: React.FC<StockTableProps> = ({ stocks, isDarkMode, selectedTic
                     />
                 </div>
                 <div className="text-xs font-semibold opacity-50 px-2 shrink-0">
-                    {/* BUG FIX: komunikat różnicowany — brak wyników vs ładowanie */}
                     {stocks.length === 0
                         ? 'Ładowanie...'
                         : `Znaleziono: ${processedStocks.length} / ${stocks.length}`}
                 </div>
             </div>
 
-            <div className="overflow-x-auto">
+            <div style={{overflow: "auto", maxHeight: "calc(100vh - 280px)", scrollbarWidth: "thin", scrollbarColor: "#475569 transparent"}}>
                 <table className="min-w-full text-left border-collapse tabular-nums">
-                    <thead>
-                        <tr className={`border-b select-none ${isDarkMode ? 'border-white/10' : 'border-slate-200'} ${theadBg}`}>
+                    <thead className="sticky top-0 z-30">
+                        <tr className={`border-b select-none ${isDarkMode ? 'border-white/10' : 'border-slate-200'} ${isDarkMode ? 'bg-slate-900' : 'bg-slate-50'}`}>
                             {onToggleSelection && <th className="pl-4 pr-2 py-4 w-8"></th>}
                             <th onClick={() => handleSort('ticker')} className="px-6 py-4 text-[10px] font-bold uppercase tracking-[0.2em] opacity-80 cursor-pointer group/th hover:text-indigo-500 transition-colors whitespace-nowrap">Symbol <SortIcon columnKey="ticker" /></th>
                             <th onClick={() => handleSort('price')} className="px-4 py-4 text-[10px] font-bold uppercase tracking-[0.2em] opacity-80 cursor-pointer group/th hover:text-indigo-500 transition-colors text-right whitespace-nowrap">Cena (PLN) <SortIcon columnKey="price" /></th>
@@ -140,14 +155,68 @@ const StockTable: React.FC<StockTableProps> = ({ stocks, isDarkMode, selectedTic
                             <th className="px-4 py-4 text-[10px] font-bold uppercase tracking-[0.2em] opacity-50 text-right whitespace-nowrap">Dług/EBITDA</th>
                             <th onClick={() => handleSort('recommendation')} className="px-4 py-4 text-[10px] font-bold uppercase tracking-[0.2em] opacity-80 cursor-pointer group/th hover:text-indigo-500 transition-colors text-center whitespace-nowrap">Sygnał <SortIcon columnKey="recommendation" /></th>
                             <th onClick={() => handleSort('trend_pct')} className="px-4 py-4 text-[10px] font-bold uppercase tracking-[0.2em] opacity-80 cursor-pointer group/th hover:text-indigo-500 transition-colors text-center whitespace-nowrap">Prognoza AI <SortIcon columnKey="trend_pct" /></th>
+                            {/* NOWE KOLUMNY — kontrola ryzyka */}
+                            <th onClick={() => handleSort('trailing_div_yield')} className={`px-4 py-4 text-[10px] font-bold uppercase tracking-[0.2em] opacity-80 cursor-pointer group/th hover:text-indigo-500 transition-colors text-right whitespace-nowrap`}>Stopa Dyw. <SortIcon columnKey="trailing_div_yield" /></th>
+                            <th onClick={() => handleSort('payout_ratio')} className={`px-4 py-4 text-[10px] font-bold uppercase tracking-[0.2em] opacity-80 cursor-pointer group/th hover:text-indigo-500 transition-colors text-center`}><span className="leading-tight inline-block text-center">Wskaznik<br/>Wyplaty</span><SortIcon columnKey="payout_ratio" /></th>
+                            <th onClick={() => handleSort('debt_to_equity')} className={`px-4 py-4 text-[10px] font-bold uppercase tracking-[0.2em] opacity-80 cursor-pointer group/th hover:text-indigo-500 transition-colors text-right whitespace-nowrap`}>Dlug/Kapital <SortIcon columnKey="debt_to_equity" /></th>
                             <th onClick={() => handleSort('quality_score')} className="px-4 py-4 text-[10px] font-bold uppercase tracking-[0.2em] opacity-80 cursor-pointer group/th hover:text-indigo-500 transition-colors text-center whitespace-nowrap">Jakość <SortIcon columnKey="quality_score" /></th>
                         </tr>
                     </thead>
                     <tbody className={`divide-y ${isDarkMode ? 'divide-white/5' : 'divide-slate-100'}`}>
                         {processedStocks.map((stock) => {
                             const score = calculateQualityScore(stock);
+
+                            // Formatowanie nowych wskaznikow
+                            // Stopa dywidendy - trailing lub zwykly div_yield jako fallback
+                            const rawDivYield = stock.trailing_div_yield ?? stock.div_yield ?? null;
+                            const divYieldPct = rawDivYield && rawDivYield > 0
+                                ? `${(rawDivYield * 100).toFixed(1)}%`
+                                : '—';
+
+                            const payoutPct = stock.payout_ratio
+                                ? `${(stock.payout_ratio * 100).toFixed(1)}%`
+                                : '—';
+
+                            const dteVal = stock.debt_to_equity != null
+                                ? (() => {
+                                    const norm = stock.debt_to_equity > 10
+                                        ? stock.debt_to_equity / 100
+                                        : stock.debt_to_equity;
+                                    return `${norm.toFixed(2)}x`;
+                                })()
+                                : '—';
+
+                            // Kolory dla payout_ratio
+                            const payoutColor = stock.payout_ratio == null
+                                ? 'text-slate-400'
+                                : stock.payout_ratio > 0.85
+                                    ? 'text-rose-500'
+                                    : stock.payout_ratio >= 0.30 && stock.payout_ratio <= 0.70
+                                        ? 'text-emerald-500'
+                                        : 'text-amber-500';
+
+                            // Kolory dla debt_to_equity
+                            const dteColor = stock.debt_to_equity == null
+                                ? 'text-slate-400'
+                                : (() => {
+                                    const norm = stock.debt_to_equity > 10
+                                        ? stock.debt_to_equity / 100
+                                        : stock.debt_to_equity;
+                                    return norm > 1.5
+                                        ? 'text-rose-500'
+                                        : norm < 1.0
+                                            ? 'text-emerald-500'
+                                            : 'text-amber-500';
+                                })();
+
                             return (
-                                <tr key={stock.ticker} className={`group/row transition-all duration-200 ${selectedTickers.includes(stock.ticker) ? (isDarkMode ? 'bg-indigo-500/8' : 'bg-indigo-50') : (isDarkMode ? 'hover:bg-indigo-500/5' : 'hover:bg-indigo-50/60')}`}>
+                                <tr key={stock.ticker} className={`group/row transition-all duration-200 ${
+                                    selectedTickers.includes(stock.ticker)
+                                        ? (isDarkMode ? 'bg-indigo-500/15' : 'bg-indigo-100')
+                                        : processedStocks.indexOf(stock) % 2 === 0
+                                            ? (isDarkMode ? 'bg-white/[0.02] hover:bg-indigo-500/8' : 'bg-white hover:bg-indigo-50/60')
+                                            : (isDarkMode ? 'bg-white/[0.05] hover:bg-indigo-500/8' : 'bg-slate-50/80 hover:bg-indigo-50/60')
+                                }`}>
                                     {onToggleSelection && (
                                         <td className="pl-4 pr-2 py-3">
                                             <input
@@ -173,7 +242,6 @@ const StockTable: React.FC<StockTableProps> = ({ stocks, isDarkMode, selectedTic
                                     </td>
                                     <td className="px-4 py-3 text-right">
                                         <div className="font-mono font-bold text-sm lg:text-base">
-                                            {/* BUG FIX: cena w PLN z separatorem tysięcy */}
                                             {stock.price?.toLocaleString('pl-PL', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) ?? '—'}
                                         </div>
                                         <div className="text-[9px] opacity-40 font-medium whitespace-nowrap">
@@ -262,7 +330,6 @@ const StockTable: React.FC<StockTableProps> = ({ stocks, isDarkMode, selectedTic
                                                         ? 'bg-rose-500/20 text-rose-500'
                                                         : 'bg-amber-500/20 text-amber-500'
                                             }`}>
-                                                {/* BUG FIX: 'strong_buy' → 'STRONG BUY' zamiast 'strong' */}
                                                 {stock.recommendation.replace(/_/g, ' ').toUpperCase()}
                                             </span>
                                         ) : (
@@ -290,6 +357,22 @@ const StockTable: React.FC<StockTableProps> = ({ stocks, isDarkMode, selectedTic
                                             </div>
                                         )}
                                     </td>
+                                    {/* NOWE KOLUMNY — kontrola ryzyka */}
+                                    <td className="px-4 py-3 text-right">
+                                        <span className="font-mono font-bold text-xs text-indigo-400">
+                                            {divYieldPct}
+                                        </span>
+                                    </td>
+                                    <td className="px-4 py-3 text-center">
+                                        <span className={`font-mono font-bold text-xs ${payoutColor}`}>
+                                            {payoutPct}
+                                        </span>
+                                    </td>
+                                    <td className="px-4 py-3 text-right">
+                                        <span className={`font-mono font-bold text-xs ${dteColor}`}>
+                                            {dteVal}
+                                        </span>
+                                    </td>
                                     <td className="px-4 py-3 text-center">
                                         <div className="flex flex-col items-center gap-1.5">
                                             <div className={`text-[10px] font-black ${score >= 75 ? 'text-emerald-500' : score >= 50 ? 'text-amber-500' : 'text-slate-500'}`}>
@@ -309,7 +392,7 @@ const StockTable: React.FC<StockTableProps> = ({ stocks, isDarkMode, selectedTic
 
                         {processedStocks.length === 0 && stocks.length > 0 && (
                             <tr>
-                                <td colSpan={onToggleSelection ? 12 : 11} className="py-12 text-center text-sm font-medium opacity-50">
+                                <td colSpan={onToggleSelection ? 15 : 14} className="py-12 text-center text-sm font-medium opacity-50">
                                     Nie znaleziono spółek pasujących do „{searchTerm}"
                                 </td>
                             </tr>

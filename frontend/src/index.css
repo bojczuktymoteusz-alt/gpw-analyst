@@ -57,3 +57,10 @@ body {
 .dark ::-webkit-scrollbar-thumb {
     @apply bg-slate-700;
 }
+
+thead th {
+    position: sticky;
+    top: 0;
+    background: inherit;
+    z-index: 10;
+}

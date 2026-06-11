@@ -4,7 +4,6 @@ import ComparisonView from './components/ComparisonView';
 import { Stock } from './types';
 import { Moon, Sun, RefreshCw, TrendingUp, Activity } from 'lucide-react';
 
-// BUG FIX: API_URL jako stała modułu, nie przeliczana przy każdym renderze
 const API_URL =
     window.location.hostname === 'localhost'
         ? 'http://localhost:8000'
@@ -27,13 +26,11 @@ function App() {
         );
     };
 
-    // Synchronizacja dark mode z <html> i localStorage
     useEffect(() => {
         document.documentElement.classList.toggle('dark', isDarkMode);
         localStorage.setItem('darkMode', String(isDarkMode));
     }, [isDarkMode]);
 
-    // BUG FIX: useCallback żeby fetchStocks nie było nową referencją przy każdym renderze
     const fetchStocks = useCallback(async () => {
         setLoading(true);
         setError(null);
@@ -46,7 +43,6 @@ function App() {
             setLoading(false);
             setIsPredicting(true);
 
-            // Prognozy AI pobierane sekwencyjnie (progressive loading)
             for (const stock of data) {
                 try {
                     const predRes = await fetch(`${API_URL}/api/stock/${stock.ticker}/predict`);
@@ -64,7 +60,6 @@ function App() {
                 await new Promise(resolve => setTimeout(resolve, 300));
             }
         } catch (err) {
-            // BUG FIX: błąd teraz widoczny dla użytkownika
             const msg = err instanceof Error ? err.message : 'Nieznany błąd';
             setError(msg);
             console.error('Error fetching stocks:', err);
@@ -87,7 +82,7 @@ function App() {
             </div>
 
             <header className={`sticky top-0 z-40 backdrop-blur-xl border-b transition-colors duration-300 ${isDarkMode ? 'bg-slate-900/50 border-white/5' : 'bg-white/50 border-slate-200'}`}>
-                <div className="container mx-auto px-6 h-20 flex items-center justify-between">
+                <div className="w-full px-4 h-20 flex items-center justify-between">
                     <div className="flex items-center gap-3 group">
                         <div className="relative">
                             <div className="absolute inset-0 bg-indigo-600 blur-lg opacity-40 group-hover:opacity-60 transition-opacity"></div>
@@ -110,7 +105,6 @@ function App() {
                             title="Odśwież dane"
                             className={`relative p-2.5 rounded-xl hover:scale-105 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed ${isDarkMode ? 'bg-slate-800 text-slate-300 border border-white/5' : 'bg-white text-slate-600 border border-slate-200 shadow-sm'}`}
                         >
-                            {/* BUG FIX: animacja spinnera tylko gdy faktycznie trwa loading */}
                             <RefreshCw size={20} className={(loading || isPredicting) ? 'animate-spin text-indigo-500' : ''} />
                         </button>
                         <button
@@ -124,8 +118,8 @@ function App() {
                 </div>
             </header>
 
-            <main className="container mx-auto px-6 py-12 relative z-10">
-                <div className="mb-10 flex flex-col md:flex-row md:items-end justify-between gap-6">
+            <main className="w-full px-4 py-8 relative z-10">
+                <div className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-6">
                     <div>
                         <div className="flex items-center gap-2 mb-2">
                             <div className="h-1 w-12 bg-indigo-500 rounded-full"></div>
@@ -137,7 +131,7 @@ function App() {
                             )}
                         </div>
                         <h2 className="text-4xl font-extrabold tracking-tight mb-2">Analiza Rynku</h2>
-                        <p className={`${isDarkMode ? 'text-slate-400' : 'text-slate-500'} max-lg`}>
+                        <p className={`${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
                             Zaawansowana analityka i dane w czasie rzeczywistym z Giełdy Papierów Wartościowych.
                         </p>
                     </div>
@@ -159,7 +153,6 @@ function App() {
                     </div>
                 </div>
 
-                {/* BUG FIX: baner błędu — wcześniej nieobecny */}
                 {error && (
                     <div className="mb-6 p-4 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-500 text-sm font-semibold flex items-center gap-3">
                         <span className="text-lg">⚠️</span>
@@ -203,7 +196,7 @@ function App() {
             </main>
 
             <footer className={`py-12 border-t transition-colors duration-300 ${isDarkMode ? 'border-white/5 text-slate-500' : 'border-slate-200 text-slate-400'}`}>
-                <div className="container mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-4">
+                <div className="w-full px-4 flex flex-col md:flex-row items-center justify-between gap-4">
                     <p className="text-sm font-medium">&copy; {new Date().getFullYear()} GPW Analyst V2. Inteligencja klasy terminalowej.</p>
                     <div className="flex gap-6 text-xs font-bold uppercase tracking-widest">
                         <span className="opacity-30 cursor-not-allowed">Dokumentacja</span>

@@ -18,6 +18,9 @@ export interface Stock {
     sector_margin_avg?: number;
     last_updated?: string;
     prediction?: Prediction;
+    payout_ratio?: number | null;
+    debt_to_equity?: number | null;
+    trailing_div_yield?: number | null;
 }
 
 export interface StockHistory {
