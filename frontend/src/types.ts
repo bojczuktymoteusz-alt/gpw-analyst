@@ -36,3 +36,35 @@ export interface Prediction {
     trend: 'up' | 'down' | 'neutral';
     forecast_days: number;
 }
+
+export interface ArbitrageResult {
+    pair: string;
+    ticker_a: string;
+    ticker_b: string;
+    label_a: string;
+    label_b: string;
+    price_a: number;
+    price_b: number;
+    spread: number;
+    spread_sma: number;
+    spread_std: number;
+    zscore: number;
+    z_threshold: number;
+    lookback_days: number;
+    data_points: number;
+    signal: 'BUY_A_SELL_B' | 'SELL_A_BUY_B' | 'WATCH_HIGH' | 'WATCH_LOW' | 'NEUTRAL';
+    is_extreme: boolean;
+    velocity: number;
+    velocity_r2: number;
+    velocity_signal: 'DECELERATING' | 'ACCELERATING' | 'FLAT';
+    entry_score: number;
+    entry_label: 'NO_TRADE' | 'WATCH' | 'TRADE_SMALL' | 'FULL_ENTRY';
+    score_velocity: number;
+    score_zscore: number;
+    score_r2: number;
+    score_regime: number;
+    half_life: number;
+    regime_active: boolean;
+    r2_gate_blocked: boolean;
+    timestamp: string;
+}

@@ -2,62 +2,64 @@ import sqlite3
 
 DB_NAME = "gpw_data.db"
 
+
 def init_db():
     conn = sqlite3.connect(DB_NAME)
     c = conn.cursor()
+
     c.execute('''CREATE TABLE IF NOT EXISTS stocks
-                 (ticker TEXT PRIMARY KEY, 
-                  price REAL, 
-                  pe REAL, 
-                  pbv REAL, 
-                  roe REAL, 
-                  div_yield REAL,
-                  last_updated TIMESTAMP)''')
-    
-    # Migration: Add 'name' and 'recommendation' columns if they don't exist
-    c.execute("PRAGMA table_info(stocks)")
-    columns = [col[1] for col in c.fetchall()]
-    if 'name' not in columns:
-        print("Migrating database: adding 'name' column...")
-        c.execute("ALTER TABLE stocks ADD COLUMN name TEXT")
-    if 'recommendation' not in columns:
-        print("Migrating database: adding 'recommendation' column...")
-        c.execute("ALTER TABLE stocks ADD COLUMN recommendation TEXT")
-    if 'market_cap' not in columns:
-        print("Migrating database: adding 'market_cap' column...")
-        c.execute("ALTER TABLE stocks ADD COLUMN market_cap REAL")
-    if 'beta' not in columns:
-        print("Migrating database: adding 'beta' column...")
-        c.execute("ALTER TABLE stocks ADD COLUMN beta REAL")
-    if 'sector' not in columns:
-        print("Migrating database: adding 'sector' column...")
-        c.execute("ALTER TABLE stocks ADD COLUMN sector TEXT")
-    if 'operating_margin' not in columns:
-        print("Migrating database: adding 'operating_margin' column...")
-        c.execute("ALTER TABLE stocks ADD COLUMN operating_margin REAL")
-    if 'ebitda' not in columns:
-        print("Migrating database: adding 'ebitda' column...")
-        c.execute("ALTER TABLE stocks ADD COLUMN ebitda REAL")
-    if 'total_debt' not in columns:
-        print("Migrating database: adding 'total_debt' column...")
-        c.execute("ALTER TABLE stocks ADD COLUMN total_debt REAL")
-    if 'total_cash' not in columns:
-        print("Migrating database: adding 'total_cash' column...")
-        c.execute("ALTER TABLE stocks ADD COLUMN total_cash REAL")
-    if 'payout_ratio' not in columns:
-        print("Migrating database: adding 'payout_ratio' column...")
-        c.execute("ALTER TABLE stocks ADD COLUMN payout_ratio REAL")
-    if 'debt_to_equity' not in columns:
-        print("Migrating database: adding 'debt_to_equity' column...")
-        c.execute("ALTER TABLE stocks ADD COLUMN debt_to_equity REAL")
-    if 'trailing_div_yield' not in columns:
-        print("Migrating database: adding 'trailing_div_yield' column...")
-        c.execute("ALTER TABLE stocks ADD COLUMN trailing_div_yield REAL")
+                 (ticker TEXT PRIMARY KEY,
+                  price REAL, pe REAL, pbv REAL, roe REAL, div_yield REAL,
+                  last_updated TIMESTAMP, name TEXT, recommendation TEXT,
+                  market_cap REAL, beta REAL, sector TEXT,
+                  operating_margin REAL, ebitda REAL, total_debt REAL,
+                  total_cash REAL, payout_ratio REAL, debt_to_equity REAL,
+                  trailing_div_yield REAL)''')
+
+    c.execute('''CREATE TABLE IF NOT EXISTS price_history
+                 (id      INTEGER PRIMARY KEY AUTOINCREMENT,
+                  ticker  TEXT NOT NULL,
+                  date    TEXT NOT NULL,
+                  close   REAL NOT NULL,
+                  volume  INTEGER DEFAULT 0,
+                  UNIQUE(ticker, date))''')
+
+    c.execute("CREATE INDEX IF NOT EXISTS idx_history_ticker_date ON price_history(ticker, date)")
+
+    # Tabela pamięci sygnałów arbitrażu – przetrwuje restart backendu
+    c.execute('''CREATE TABLE IF NOT EXISTS arbitrage_signals
+                 (pair        TEXT PRIMARY KEY,
+                  signal      TEXT NOT NULL,
+                  zscore      REAL,
+                  updated_at  TIMESTAMP)''')
 
     conn.commit()
     conn.close()
+
 
 def get_db_connection():
     conn = sqlite3.connect(DB_NAME)
     conn.row_factory = sqlite3.Row
     return conn
+
+
+def clear_price_history(tickers: list = None):
+    """
+    Czyści price_history przy starcie – usuwa nieskorygowane ceny
+    (np. po odcięciu dywidendy przed przejściem na Adj Close).
+    tickers=None → czyści całą tabelę.
+    tickers=['PKO.WA','PEO.WA'] → czyści tylko podane.
+    """
+    conn = sqlite3.connect(DB_NAME)
+    if tickers:
+        placeholders = ",".join("?" * len(tickers))
+        conn.execute(
+            f"DELETE FROM price_history WHERE ticker IN ({placeholders})",
+            tickers
+        )
+        print(f"[DB] Wyczyszczono price_history dla: {tickers}")
+    else:
+        conn.execute("DELETE FROM price_history")
+        print("[DB] Wyczyszczono całą tabelę price_history (reset Adj Close)")
+    conn.commit()
+    conn.close()

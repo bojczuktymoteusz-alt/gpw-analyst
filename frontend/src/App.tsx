@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import StockTable from './components/StockTable';
 import ComparisonView from './components/ComparisonView';
+import ArbitrageView from './ArbitrageView';
 import { Stock } from './types';
 import { Moon, Sun, RefreshCw, TrendingUp, Activity } from 'lucide-react';
 
@@ -17,7 +18,7 @@ function App() {
     const [loading, setLoading] = useState(false);
     const [isPredicting, setIsPredicting] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [view, setView] = useState<'market' | 'compare'>('market');
+    const [view, setView] = useState<'market' | 'compare' | 'arbitrage'>('market');
     const [selectedTickers, setSelectedTickers] = useState<string[]>([]);
 
     const toggleSelection = (ticker: string) => {
@@ -150,6 +151,12 @@ function App() {
                         >
                             Porównanie{selectedTickers.length > 0 ? ` (${selectedTickers.length})` : ''}
                         </button>
+                        <button
+                            onClick={() => setView('arbitrage')}
+                            className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all ${view === 'arbitrage' ? (isDarkMode ? 'bg-indigo-600 text-white shadow-sm' : 'bg-white text-indigo-600 shadow-sm') : (isDarkMode ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-700')}`}
+                        >
+                            Arbitraż
+                        </button>
                     </div>
                 </div>
 
@@ -162,7 +169,9 @@ function App() {
                 )}
 
                 <div className="relative animate-in fade-in slide-in-from-bottom-4 duration-700 ease-out">
-                    {view === 'compare' ? (
+                    {view === 'arbitrage' ? (
+                        <ArbitrageView isDarkMode={isDarkMode} apiUrl={API_URL} />
+                    ) : view === 'compare' ? (
                         <ComparisonView
                             stocks={stocks.filter(s => selectedTickers.includes(s.ticker))}
                             isDarkMode={isDarkMode}
