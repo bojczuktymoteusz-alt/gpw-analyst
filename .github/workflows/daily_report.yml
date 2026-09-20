@@ -2,8 +2,8 @@ name: Codzienny Raport WIG20
 
 on:
   schedule:
-    - cron: '30 6 * * 1-5'  # 17:15 czasu polskiego (UTC+2)
-  workflow_dispatch:          # możliwość ręcznego odpalenia
+    - cron: '30 6 * * 1-5'  # 8:30 czasu polskiego (UTC+2)
+  workflow_dispatch:
 
 jobs:
   send-report:
@@ -20,12 +20,9 @@ jobs:
 
       - name: Instalacja zależności
         run: |
-          pip install requests matplotlib pandas python-dotenv yfinance scikit-learn numpy
+          pip install requests matplotlib pandas python-dotenv yfinance scikit-learn numpy groq
 
       - name: Wyslij raport
         env:
           DISCORD_WEBHOOK_PL: ${{ secrets.DISCORD_WEBHOOK_PL }}
           DISCORD_WEBHOOK_ENG: ${{ secrets.DISCORD_WEBHOOK_ENG }}
-        run: |
-          python discord_report.py
-          python discord_report_en.py

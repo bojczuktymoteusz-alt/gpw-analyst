@@ -28,7 +28,7 @@ async def lifespan(app: FastAPI):
     print(f"✅ Cache price_history wyczyszczony dla: {ARBITRAGE_TICKERS}")
 
     start_scheduler()
-    print("✅ Scheduler uruchomiony (odświeżanie co 60 min).")
+    print("✅ Scheduler uruchomiony (odświeżanie co 15 min).")
     yield
     stop_scheduler()
 
@@ -88,3 +88,17 @@ def read_arbitrage_pair(pair_name: str):
     if not result:
         raise HTTPException(status_code=503, detail="Nie można pobrać danych")
     return result
+
+# ── Snapshots / Agent ──────────────────────────────────────────────
+
+@app.get("/api/snapshots/latest")
+def get_latest_snapshot():
+    import json
+    from database import get_latest_snapshots
+    stocks_raw = get_latest_snapshots("stock")
+    arb_raw = get_latest_snapshots("arbitrage")
+    return {
+        "timestamp": stocks_raw[0]["timestamp"] if stocks_raw else None,
+        "stocks": [json.loads(r["data_json"]) for r in stocks_raw],
+        "arbitrage": [json.loads(r["data_json"]) for r in arb_raw]
+    }

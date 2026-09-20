@@ -211,6 +211,91 @@ def _build_embed(stocks: list) -> dict:
         }]
     }
 
+def _build_opportunities_embed(stocks: list, arbitrage: list = None) -> dict:
+    opportunities = []
+    watch_list = []
+    
+    for s in stocks:
+        name = s.get("name", s.get("ticker", "?"))
+        price = s.get("price", 0) or 0
+        pe = s.get("pe", 0) or 0
+        pbv = s.get("pbv", 0) or 0
+        roe = s.get("roe", 0) or 0
+        div_yield = s.get("div_yield", 0) or 0
+        rec = str(s.get("recommendation", "")).lower()
+        quality = _calc_quality(s)
+        
+        reasons = []
+        if 0 < pe < 10:
+            reasons.append(f"C/Z={pe:.1f} (bardzo tanio)")
+        if 0 < pbv < 1.2:
+            reasons.append(f"C/WK={pbv:.2f} (poniżej wartości księgowej)")
+        if roe and roe > 0.18:
+            reasons.append(f"ROE={roe:.1%} (wysoka rentowność)")
+        if div_yield and div_yield > 0.07:
+            reasons.append(f"Dywidenda={div_yield:.1%} (wysoka stopa)")
+        if rec in ("buy", "strong_buy"):
+            reasons.append(f"Rekomendacja: {rec.upper()}")
+        if quality >= 75:
+            reasons.append(f"Jakość={quality}/100")
+            
+        if len(reasons) >= 3:
+            opportunities.append((name, price, reasons, quality))
+        elif len(reasons) >= 2:
+            watch_list.append((name, price, reasons, quality))
+    
+    opportunities.sort(key=lambda x: x[3], reverse=True)
+    watch_list.sort(key=lambda x: x[3], reverse=True)
+    
+    lines = []
+    date_str = datetime.now().strftime("%d.%m.%Y")
+    
+    if opportunities:
+        lines.append("🟢 **OKAZJE – rozważ zakup:**")
+        for name, price, reasons, quality in opportunities[:5]:
+            lines.append(f"**{name}** @ {price:.2f} zł")
+            for r in reasons:
+                lines.append(f"  • {r}")
+            lines.append("")
+    else:
+        lines.append("🟢 **OKAZJE:** Brak wyraźnych sygnałów dziś.")
+        lines.append("")
+    
+    if watch_list:
+        lines.append("🟡 **OBSERWUJ:**")
+        for name, price, reasons, quality in watch_list[:5]:
+            reasons_str = " | ".join(reasons)
+            lines.append(f"**{name}** @ {price:.2f} zł — {reasons_str}")
+        lines.append("")
+    
+    if arbitrage:
+        arb_alerts = [
+            a for a in arbitrage
+            if a.get("signal") in ("WATCH_HIGH", "WATCH_LOW",
+                                    "TRADE_SMALL", "FULL_ENTRY")
+        ]
+        if arb_alerts:
+            lines.append("📊 **ARBITRAŻ – pary do obserwacji:**")
+            for a in arb_alerts:
+                pair = a.get("pair", "?")
+                zscore = a.get("zscore", 0)
+                signal = a.get("signal", "?")
+                entry_score = a.get("entry_score", 0)
+                emoji = "🔴" if "TRADE" in signal else "🟡"
+                lines.append(
+                    f"{emoji} **{pair}** Z={zscore:+.2f} | "
+                    f"{signal} | Score={entry_score}/100"
+                )
+    
+    return {
+        "embeds": [{
+            "title": f"🎯 Okazje WIG20 — {date_str}",
+            "description": "\n".join(lines) if lines else "Brak sygnałów.",
+            "color": 0x2ecc71,
+            "footer": {"text": "GPW Analyst v2.0 • Analiza fundamentalna + arbitraż"}
+        }]
+    }
+
 
 def send_daily_report(stocks: list | None = None, image_path: str | None = None) -> bool:
     webhook_url = WEBHOOK_URL
@@ -226,6 +311,14 @@ def send_daily_report(stocks: list | None = None, image_path: str | None = None)
     if not stocks:
         print("Brak danych do wyslania.")
         return False
+    
+    # ── NOWE: pobierz arbitraż ──────────────────────────────────
+    try:
+        from data_fetcher import get_all_arbitrage
+        arbitrage = get_all_arbitrage()
+    except Exception:
+        arbitrage = []
+    # ────────────────────────────────────────────────────────────
 
     if image_path:
         with open(image_path, "rb") as f:
@@ -237,6 +330,15 @@ def send_daily_report(stocks: list | None = None, image_path: str | None = None)
         filename = f"wig20_{datetime.now().strftime('%Y%m%d')}.png"
 
     payload = _build_embed(stocks)
+    
+    # ── NOWE: wyślij embed z okazjami ───────────────────────────
+    opps_payload = _build_opportunities_embed(stocks, arbitrage)
+    try:
+        requests.post(webhook_url, json=opps_payload, timeout=30)
+        print("Embed z okazjami wysłany.")
+    except Exception as e:
+        print(f"Błąd wysyłania okazji: {e}")
+    # ────────────────────────────────────────────────────────────
 
     print(f"Wysylam raport na Discord ({len(stocks)} spolek)...")
     try:
@@ -256,6 +358,91 @@ def send_daily_report(stocks: list | None = None, image_path: str | None = None)
         print(f"Blad polaczenia: {e}")
         return False
 
+def _get_claude_insight(stocks: list, arbitrage: list) -> str:
+    """Pyta Groq (darmowe AI) o komentarz do dzisiejszej sytuacji."""
+    try:
+        from groq import Groq
+        
+        client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
+        
+        portfolio = {
+            "PKO.WA": {"ilosc": 74, "cena_zakupu": 95.50},
+            "PEO.WA": {"ilosc": 87, "cena_zakupu": 228.00},
+            "ALR.WA": {"ilosc": 55, "cena_zakupu": 133.00},
+            "KRU.WA": {"ilosc": 20, "cena_zakupu": 394.50},
+            "KTY.WA": {"ilosc": 10, "cena_zakupu": 1263.30},
+            "KGH.WA": {"ilosc": 21, "cena_zakupu": 335.60},
+            "PZU.WA": {"ilosc": 100, "cena_zakupu": 228.00},
+        }
+        
+        top_stocks = sorted(
+            stocks, key=lambda x: _calc_quality(x), reverse=True
+        )[:8]
+        
+        arb_alerts = [
+            a for a in arbitrage
+            if a.get("signal") not in ("NEUTRAL",)
+        ]
+        
+        portfel_status = []
+        for ticker, info in portfolio.items():
+            stock = next(
+                (s for s in stocks if s.get("ticker") == ticker), None
+            )
+            if stock:
+                kurs = stock.get("price", 0)
+                zakup = info["cena_zakupu"]
+                zmiana = ((kurs - zakup) / zakup * 100) if zakup else 0
+                portfel_status.append({
+                    "ticker": ticker,
+                    "nazwa": stock.get("name", ticker),
+                    "kurs": round(kurs, 2),
+                    "cena_zakupu": zakup,
+                    "zmiana_pct": round(zmiana, 2),
+                    "ilosc": info["ilosc"]
+                })
+
+        prompt = f"""Jesteś ekspertem inwestycyjnym GPW. Dzisiaj jest {datetime.now().strftime('%d.%m.%Y')}.
+
+PORTFEL INWESTORA:
+{json.dumps(portfel_status, ensure_ascii=False, indent=2)}
+
+TOP SPÓŁKI WIG20:
+{json.dumps([{{
+    'nazwa': s.get('name'),
+    'kurs': s.get('price'),
+    'cz': round(s.get('pe') or 0, 1),
+    'roe': f"{{(s.get('roe') or 0):.1%}}",
+    'rekomendacja': s.get('recommendation'),
+    'jakosc': _calc_quality(s)
+}} for s in top_stocks], ensure_ascii=False, indent=2)}
+
+SYGNAŁY ARBITRAŻU:
+{json.dumps([{{
+    'para': a.get('pair'),
+    'zscore': round(a.get('zscore') or 0, 2),
+    'sygnał': a.get('signal'),
+    'score': a.get('entry_score')
+}} for a in arb_alerts], ensure_ascii=False, indent=2)}
+
+Napisz KONKRETNY komentarz (max 5 zdań):
+1. Co jest najciekawsze w portfelu dziś?
+2. Czy jest sygnał arbitrażu do działania?
+3. Jedna konkretna sugestia przed otwarciem sesji.
+Podawaj liczby. Bez ogólników."""
+
+        response = client.chat.completions.create(
+            model="llama-3.1-8b-instant",
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=400,
+            temperature=0.3
+        )
+        
+        return response.choices[0].message.content
+        
+    except Exception as e:
+        print(f"Błąd Groq API: {e}")
+        return "Analiza AI niedostępna dziś."
 
 if __name__ == "__main__":
     success = send_daily_report()

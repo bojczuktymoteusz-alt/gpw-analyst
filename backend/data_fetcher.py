@@ -7,15 +7,15 @@ from sklearn.linear_model import LinearRegression
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
 from database import get_db_connection, init_db
+from database import get_db_connection, init_db, save_snapshot
 
 # Pełna lista WIG20
 TICKERS = [
     "ALE.WA", "ALR.WA", "BDX.WA", "CDR.WA", "CPS.WA",
     "DNP.WA", "JSW.WA", "KGH.WA", "KRU.WA", "KTY.WA",
     "LPP.WA", "MBK.WA", "OPL.WA", "PEO.WA", "PGE.WA",
-    "PKN.WA", "PKO.WA", "PZU.WA", "SPL.WA", "PCO.WA"
+    "PKN.WA", "PKO.WA", "PZU.WA", "BHW.WA", "PCO.WA"
 ]
-
 def fetch_single_ticker(ticker):
     """Helper to fetch data from yfinance without writing to DB."""
     try:
@@ -50,18 +50,21 @@ def fetch_single_ticker(ticker):
             "PKN.WA": "Orlen",
             "PKO.WA": "PKO BP",
             "PZU.WA": "PZU",
-            "SPL.WA": "Santander",
+            "BHW.WA": "Bank Handlowy",
             "PCO.WA": "Pepco"
         }
         name = name_map.get(ticker, name)
-            
+
         recommendation = info.get('recommendationKey', 'none')
             
         div_yield = info.get('dividendYield', 0)
         # Handle decimal vs percentage
         if div_yield and div_yield > 0.5:
             div_yield = div_yield / 100.0
-            
+        # Odfiltruj absurdalne wartości (>20% stopa dywidendy to błąd danych)
+        if div_yield and div_yield > 0.20:
+            div_yield = 0
+                
         roe = info.get('returnOnEquity')
         
         # Fallback for ROE if missing in info
@@ -77,7 +80,7 @@ def fetch_single_ticker(ticker):
                         equity = balance_sheet.loc['Stockholders Equity'].iloc[0]
                         
                         if equity and equity != 0:
-                            roe = net_income / equity
+                            roe =  net_income / equity
                             print(f"Calculated ROE for {ticker}: {roe}")
             except Exception as e:
                 print(f"Failed to calculate ROE for {ticker}: {e}")
@@ -345,9 +348,9 @@ ARBITRAGE_PAIRS = [
         "label_a": "PKO BP", "label_b": "Bank Pekao",
         "lookback_days": 30, "z_threshold": 2.0,
     },
-    {
-        "name": "PKO/SPL", "ticker_a": "PKO.WA", "ticker_b": "SPL.WA",
-        "label_a": "PKO BP", "label_b": "Santander PL",
+            {
+        "name": "PKO/BHW", "ticker_a": "PKO.WA", "ticker_b": "BHW.WA",
+        "label_a": "PKO BP", "label_b": "Bank Handlowy",
         "lookback_days": 30, "z_threshold": 2.0,
     },
 
@@ -1016,7 +1019,7 @@ def _send_arbitrage_alert(r):
 
 _scheduler_running = False
 _scheduler_thread = None
-REFRESH_INTERVAL_SEC = 3600
+REFRESH_INTERVAL_SEC = 900
 
 
 def _scheduler_loop():
@@ -1025,17 +1028,34 @@ def _scheduler_loop():
     while _scheduler_running:
         try:
             print(f"[Scheduler] {datetime.now():%H:%M} – odświeżam WIG20...")
-            get_all_stocks()
+            stocks = get_all_stocks()
             print(f"[Scheduler] {datetime.now():%H:%M} – liczę Z-Score...")
-            for r in get_all_arbitrage():
+            arbitrage = get_all_arbitrage()
+            for r in arbitrage:
                 print(f"[Arbitraż] {r['pair']}  Z={r['zscore']:+.4f}  sygnał={r['signal']}")
+
+            # ── ARCHIWIZACJA SNAPSHOTS ────────────────────────────
+            for stock in (stocks or []):
+                save_snapshot(
+                    snapshot_type="stock",
+                    data=stock,
+                    ticker=stock.get("ticker")
+                )
+            for pair in (arbitrage or []):
+                save_snapshot(
+                    snapshot_type="arbitrage",
+                    data=pair,
+                    pair_name=pair.get("pair")
+                )
+            print(f"[Snapshot] Zapisano {len(stocks or [])} spółek + {len(arbitrage or [])} par.")
+            # ─────────────────────────────────────────────────────
+
         except Exception as e:
             print(f"[Scheduler] Błąd: {e}")
         elapsed = 0
         while _scheduler_running and elapsed < REFRESH_INTERVAL_SEC:
             time.sleep(5)
             elapsed += 5
-
 
 def start_scheduler():
     global _scheduler_running, _scheduler_thread

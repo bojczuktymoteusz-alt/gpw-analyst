@@ -1,4 +1,6 @@
 import sqlite3
+import json
+from datetime import datetime
 
 DB_NAME = "gpw_data.db"
 
@@ -26,12 +28,25 @@ def init_db():
 
     c.execute("CREATE INDEX IF NOT EXISTS idx_history_ticker_date ON price_history(ticker, date)")
 
-    # Tabela pamięci sygnałów arbitrażu – przetrwuje restart backendu
     c.execute('''CREATE TABLE IF NOT EXISTS arbitrage_signals
                  (pair        TEXT PRIMARY KEY,
                   signal      TEXT NOT NULL,
                   zscore      REAL,
                   updated_at  TIMESTAMP)''')
+
+    # ── NOWE: tabela snapshots ────────────────────────────────────────
+    c.execute('''CREATE TABLE IF NOT EXISTS snapshots
+                 (id             INTEGER PRIMARY KEY AUTOINCREMENT,
+                  timestamp      TEXT NOT NULL,
+                  snapshot_type  TEXT NOT NULL,
+                  ticker         TEXT,
+                  pair_name      TEXT,
+                  data_json      TEXT NOT NULL)''')
+
+    c.execute("CREATE INDEX IF NOT EXISTS idx_snapshots_timestamp ON snapshots(timestamp)")
+    c.execute("CREATE INDEX IF NOT EXISTS idx_snapshots_ticker ON snapshots(ticker)")
+    c.execute("CREATE INDEX IF NOT EXISTS idx_snapshots_pair ON snapshots(pair_name)")
+    # ─────────────────────────────────────────────────────────────────
 
     conn.commit()
     conn.close()
@@ -44,12 +59,6 @@ def get_db_connection():
 
 
 def clear_price_history(tickers: list = None):
-    """
-    Czyści price_history przy starcie – usuwa nieskorygowane ceny
-    (np. po odcięciu dywidendy przed przejściem na Adj Close).
-    tickers=None → czyści całą tabelę.
-    tickers=['PKO.WA','PEO.WA'] → czyści tylko podane.
-    """
     conn = sqlite3.connect(DB_NAME)
     if tickers:
         placeholders = ",".join("?" * len(tickers))
@@ -63,3 +72,34 @@ def clear_price_history(tickers: list = None):
         print("[DB] Wyczyszczono całą tabelę price_history (reset Adj Close)")
     conn.commit()
     conn.close()
+
+
+# ── NOWE: archiwizacja snapshots ──────────────────────────────────────
+
+def save_snapshot(snapshot_type: str, data: dict,
+                  ticker: str = None, pair_name: str = None):
+    """Zapisuje jeden snapshot do tabeli snapshots."""
+    conn = sqlite3.connect(DB_NAME)
+    conn.execute(
+        """INSERT INTO snapshots (timestamp, snapshot_type, ticker, pair_name, data_json)
+           VALUES (?, ?, ?, ?, ?)""",
+        (datetime.now().isoformat(), snapshot_type, ticker, pair_name, json.dumps(data))
+    )
+    conn.commit()
+    conn.close()
+
+
+def get_latest_snapshots(snapshot_type: str, limit_per_key: int = 1) -> list:
+    """Zwraca najnowsze snapshoty danego typu – dla endpointu agenta."""
+    conn = get_db_connection()
+    rows = conn.execute(
+        """SELECT * FROM snapshots
+           WHERE snapshot_type = ?
+           AND timestamp = (
+               SELECT MAX(timestamp) FROM snapshots
+               WHERE snapshot_type = ?
+           )""",
+        (snapshot_type, snapshot_type)
+    ).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
