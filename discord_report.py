@@ -344,6 +344,23 @@ def send_daily_report(stocks: list | None = None, image_path: str | None = None)
     except Exception as e:
         print(f"Błąd wysyłania okazji: {e}")
     # ────────────────────────────────────────────────────────────
+        # ── GROQ: komentarz AI ──────────────────────────────────────
+    print("Pytam Groq o komentarz...")
+    insight = _get_claude_insight(stocks, arbitrage)
+    insight_payload = {
+        "embeds": [{
+            "title": f"🤖 Komentarz AI — {datetime.now().strftime('%d.%m.%Y')}",
+            "description": insight,
+            "color": 0x9b59b6,
+            "footer": {"text": "Groq • Llama 3.1 • GPW Analyst v2.0"}
+        }]
+    }
+    try:
+        requests.post(webhook_url, json=insight_payload, timeout=30)
+        print("Komentarz AI wysłany.")
+    except Exception as e:
+        print(f"Błąd wysyłania komentarza AI: {e}")
+    # ────────────────────────────────────────────────────────────
 
     print(f"Wysylam raport na Discord ({len(stocks)} spolek)...")
     try:
@@ -445,10 +462,11 @@ Podawaj liczby. Bez ogólników."""
         
         return response.choices[0].message.content
         
-    except Exception as e:
+        except Exception as e:
+        import traceback
         print(f"Błąd Groq API: {e}")
+        print(traceback.format_exc())
         return "Analiza AI niedostępna dziś."
-
 if __name__ == "__main__":
     success = send_daily_report()
     exit(0 if success else 1)
