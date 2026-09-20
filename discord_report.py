@@ -453,6 +453,7 @@ Napisz KONKRETNY komentarz (max 5 zdań):
 3. Jedna konkretna sugestia przed otwarciem sesji.
 Podawaj liczby. Bez ogólników."""
 
+    try:
         response = client.chat.completions.create(
             model="llama-3.1-8b-instant",
             messages=[{"role": "user", "content": prompt}],
