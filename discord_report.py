@@ -454,16 +454,15 @@ Napisz KONKRETNY komentarz (max 5 zdań):
 Podawaj liczby. Bez ogólników."""
 
     try:
-        response = client.chat.completions.create(
-            model="llama-3.1-8b-instant",
-            messages=[{"role": "user", "content": prompt}],
-            max_tokens=400,
-            temperature=0.3
+         response = client.chat.completions.create(
+                model="llama-3.1-8b-instant",
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=400,
+                temperature=0.3
         )
-        
-        return response.choices[0].message.content
-        
-        except Exception as e:
+         return response.choices[0].message.content
+            
+    except Exception as e:
         import traceback
         print(f"Błąd Groq API: {e}")
         print(traceback.format_exc())
