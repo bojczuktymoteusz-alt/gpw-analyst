@@ -2,7 +2,7 @@ name: Codzienny Raport WIG20
 
 on:
   schedule:
-    - cron: '30 6 * * 1-5'  # 8:30 czasu polskiego (UTC+2)
+    - cron: '30 6 * * 1-5'
   workflow_dispatch:
 
 jobs:
@@ -26,3 +26,7 @@ jobs:
         env:
           DISCORD_WEBHOOK_PL: ${{ secrets.DISCORD_WEBHOOK_PL }}
           DISCORD_WEBHOOK_ENG: ${{ secrets.DISCORD_WEBHOOK_ENG }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+        run: |
+          python discord_report.py
+          python discord_report_en.py
