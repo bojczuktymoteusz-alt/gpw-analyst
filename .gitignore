@@ -7,6 +7,6 @@ backend/venv/
 backend/__pycache__/
 *.pyc
 .env
-
+*.db
 # Baza danych lokalna (SQLite)
 backend/gpw_data.db
