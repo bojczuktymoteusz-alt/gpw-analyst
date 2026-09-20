@@ -303,6 +303,11 @@ def send_daily_report(stocks: list | None = None, image_path: str | None = None)
         print("Blad: Zmienna srodowiskowa DISCORD_WEBHOOK_PL nie jest ustawiona.")
         return False
 
+    # ── Inicjalizacja bazy danych ────────────────────────────────
+    from database import init_db
+    init_db()
+    # ────────────────────────────────────────────────────────────
+
     if stocks is None:
         print("Pobieram dane WIG20...")
         from data_fetcher import get_all_stocks
