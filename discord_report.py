@@ -356,14 +356,14 @@ Podawaj liczby. Bez ogólników.
 
         # 5. Zapytanie do Groq
         response = client.chat.completions.create(
-            model="llama-3.1-8b-instant",
+            model="openai/gpt-oss-20b",
             messages=[{"role": "user", "content": prompt}],
-            max_tokens=400,
+            max_tokens=1500,
             temperature=0.3,
         )
 
-        return response.choices[0].message.content
-
+        return response.choices[0].message.content or "Analiza AI niedostępna dziś."
+    
     except Exception as e:
         import traceback
 
@@ -427,8 +427,7 @@ def send_daily_report(
                 "title": f"🤖 Komentarz AI — {datetime.now().strftime('%d.%m.%Y')}",
                 "description": insight,
                 "color": 0x9b59b6,
-                "footer": {"text": "Groq • Llama 3.1 • GPW Analyst v2.0"},
-            }
+                "footer": {"text": "Groq • GPT-OSS 20B • GPW Analyst v2.0"},            }
         ]
     }
     try:

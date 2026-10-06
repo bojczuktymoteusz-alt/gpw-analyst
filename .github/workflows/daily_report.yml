@@ -27,6 +27,7 @@ jobs:
 
       - name: Wyslij raport
         env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_PL }}
           DISCORD_WEBHOOK_PL: ${{ secrets.DISCORD_WEBHOOK_PL }}
           DISCORD_WEBHOOK_ENG: ${{ secrets.DISCORD_WEBHOOK_ENG }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
