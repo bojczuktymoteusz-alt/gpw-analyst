@@ -267,7 +267,7 @@ def _get_claude_insight(stocks: list, arbitrage: list) -> str:
                         "nazwa": stock.get("name", ticker),
                         "kurs": round(kurs, 2),
                         "cena_zakupu": zakup,
-                        "zmiana_pct": round(zmiana, 2),
+                        "zmiana_od_ceny_zakupu_pct": round(zmiana, 2),
                         "ilosc": info["ilosc"],
                     }
                 )
