@@ -188,48 +188,32 @@ def _build_opportunities_embed(stocks: list, arbitrage: list) -> dict:
 
 
 def _build_agent_embed(signals: list) -> dict:
-    """
-    AUTO-ADAPTACYJNY embed sygnałów agenta:
-    - jeśli są tylko ticker/action/reason → pokaże to,
-    - jeśli są score/momentum/fundamental → pokaże rozszerzony widok.
-    """
+    """Embed sygnałów agenta: BUY malejąco wg score, potem SELL."""
     if not signals:
         description = "Brak nowych sygnałów tradingowych od agenta dziś."
         color = 0x95a5a6
     else:
-        lines = []
-        buy_count = 0
-        sell_count = 0
+        order = {"BUY": 0, "SELL": 1}
+        ordered = sorted(
+            signals,
+            key=lambda s: (
+                order.get((s.get("action") or "").upper(), 2),
+                -(s.get("score") or 0),
+            ),
+        )
+        buy_count = sum(1 for s in ordered if (s.get("action") or "").upper() == "BUY")
+        sell_count = sum(1 for s in ordered if (s.get("action") or "").upper() == "SELL")
 
-        for s in signals:
-            ticker = s.get("ticker", "N/A")
+        lines = []
+        for s in ordered:
+            ticker = (s.get("ticker") or "N/A").replace(".WA", "")
             action = (s.get("action") or "").upper()
             reason = s.get("reason") or "Brak opisu."
-            score = s.get("score")
-            momentum = s.get("momentum")
-            fundamental = s.get("fundamental")
-
-            if action == "BUY":
-                buy_count += 1
-            elif action == "SELL":
-                sell_count += 1
-
-            base = f"**{ticker}** — **{action}**"
-            extras = []
-
-            if score is not None:
-                extras.append(f"Score={score}/100")
-            if momentum is not None:
-                extras.append(f"Momentum={momentum}")
-            if fundamental is not None:
-                extras.append(f"Fundamental={fundamental}/100")
-
-            if extras:
-                base += " | " + " | ".join(extras)
-
-            lines.append(base + f"\n> {reason}")
+            lines.append(f"**{ticker}** — **{action}**\n> {reason}")
 
         description = "\n\n".join(lines)
+        if len(description) > 4000:
+            description = description[:3990] + "\n…"
 
         if buy_count > sell_count:
             color = 0x2ecc71  # zielony
@@ -244,7 +228,9 @@ def _build_agent_embed(signals: list) -> dict:
                 "title": f"🤖 Sygnały agenta — {datetime.now().strftime('%d.%m.%Y')}",
                 "description": description,
                 "color": color,
-                "footer": {"text": "GPW Analyst v2.0 • Agent dzienny (auto-adaptacyjny)"},
+                "footer": {
+                    "text": "Ranking: fundamenty + momentum 20 sesji • nie jest rekomendacją inwestycyjną"
+                },
             }
         ]
     }
@@ -431,8 +417,7 @@ def send_daily_report(
                 "title": f"🤖 Komentarz AI — {datetime.now().strftime('%d.%m.%Y')}",
                 "description": insight,
                 "color": 0x9b59b6,
-                "footer": {"text": "Groq • Llama 3.1 • GPW Analyst v2.0"},
-            }
+                "footer": {"text": "Groq • GPT-OSS 20B • GPW Analyst v2.0"},            }
         ]
     }
     try:
