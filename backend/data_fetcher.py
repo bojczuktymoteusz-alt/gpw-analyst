@@ -6,8 +6,11 @@ import numpy as np
 from sklearn.linear_model import LinearRegression
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
-from database import get_db_connection, init_db
-from database import get_db_connection, init_db, save_snapshot
+try:
+    from database import get_db_connection, init_db, save_snapshot
+except ModuleNotFoundError:
+    from backend.database import get_db_connection, init_db, save_snapshot
+
 
 # Pełna lista WIG20
 TICKERS = [

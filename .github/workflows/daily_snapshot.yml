@@ -1,15 +1,20 @@
-name: Codzienny Raport WIG20
+name: Dzienny snapshot GPW
 
 on:
   schedule:
-    - cron: '30 6 * * 1-5'
+    # 16:30 UTC = 18:30 latem / 17:30 zimą - w obu przypadkach po zamknięciu GPW
+    - cron: '30 16 * * 1-5'
   workflow_dispatch:
 
 permissions:
   contents: write
 
+concurrency:
+  group: gpw-snapshot
+  cancel-in-progress: false
+
 jobs:
-  send-report:
+  snapshot:
     runs-on: ubuntu-latest
 
     steps:
@@ -22,27 +27,20 @@ jobs:
           python-version: '3.11'
 
       - name: Instalacja zależności
-        run: |
-          pip install requests matplotlib pandas python-dotenv yfinance scikit-learn numpy groq
+        run: pip install yfinance pandas
 
-      - name: Wyslij raport
-        env:
-          DISCORD_WEBHOOK_PL: ${{ secrets.DISCORD_WEBHOOK_PL }}
-          DISCORD_WEBHOOK_ENG: ${{ secrets.DISCORD_WEBHOOK_ENG }}
-          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
-        run: |
-          python discord_report.py
-          python discord_report_en.py
+      - name: Pobierz snapshot
+        run: python backend/daily_snapshot.py
 
-      - name: Zapisz dziennik sygnałów
+      - name: Zapisz do repo
         run: |
           git config user.name "github-actions"
           git config user.email "actions@github.com"
-          git add -A data
+          git add data/daily_prices.csv
           if git diff --cached --quiet; then
             echo "Brak zmian"
           else
-            git commit -m "dziennik sygnałów $(date -u +%F)"
+            git commit -m "snapshot $(date -u +%F)"
             git pull --rebase origin ${{ github.ref_name }}
             git push
           fi

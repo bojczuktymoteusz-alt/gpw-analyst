@@ -9,14 +9,29 @@ def init_db():
     conn = sqlite3.connect(DB_NAME)
     c = conn.cursor()
 
-    c.execute('''CREATE TABLE IF NOT EXISTS stocks
-                 (ticker TEXT PRIMARY KEY,
-                  price REAL, pe REAL, pbv REAL, roe REAL, div_yield REAL,
-                  last_updated TIMESTAMP, name TEXT, recommendation TEXT,
-                  market_cap REAL, beta REAL, sector TEXT,
-                  operating_margin REAL, ebitda REAL, total_debt REAL,
-                  total_cash REAL, payout_ratio REAL, debt_to_equity REAL,
-                  trailing_div_yield REAL)''')
+    # ── Tabela akcji (WIG20, GPW) ────────────────────────────────
+    c.execute('''CREATE TABLE IF NOT EXISTS stocks ( 
+        ticker TEXT PRIMARY KEY,
+        name TEXT,
+        price REAL,
+        pe REAL,
+        pbv REAL,
+        roe REAL,
+        div_yield REAL,
+        operating_margin REAL,
+        ebitda REAL,
+        total_debt REAL,
+        total_cash REAL,
+        recommendation TEXT,
+        market_cap REAL,
+        beta REAL,
+        sector TEXT,
+        payout_ratio REAL,
+        debt_to_equity REAL,
+        trailing_div_yield REAL,
+        last_updated TEXT
+    )''')
+
 
     c.execute('''CREATE TABLE IF NOT EXISTS price_history
                  (id      INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -25,6 +40,16 @@ def init_db():
                   close   REAL NOT NULL,
                   volume  INTEGER DEFAULT 0,
                   UNIQUE(ticker, date))''')
+
+    c.execute('''CREATE TABLE IF NOT EXISTS daily_snapshots                                                                             
+                 (id INTEGER PRIMARY KEY AUTOINCREMENT,
+                  date TEXT NOT NULL,
+                  stocks_json TEXT NOT NULL,
+                  arbitrage_json TEXT NOT NULL,
+                  ai_comment TEXT,
+                  opportunities_json TEXT
+    )''')
+
 
     c.execute("CREATE INDEX IF NOT EXISTS idx_history_ticker_date ON price_history(ticker, date)")
 
@@ -87,6 +112,18 @@ def save_snapshot(snapshot_type: str, data: dict,
     )
     conn.commit()
     conn.close()
+
+
+
+def save_daily_snapshot(date, stocks_json, arbitrage_json, ai_comment, opportunities_json):
+    conn = sqlite3.connect("gpw_data.db")
+    c = conn.cursor()
+    c.execute("""INSERT INTO daily_snapshots(date, stocks_json, arbitrage_json, ai_comment, opportunities_json)
+                 VALUES (?, ?, ?, ?, ?)""",
+              (date, stocks_json, arbitrage_json, ai_comment, opportunities_json))
+    conn.commit()
+    conn.close()
+
 
 
 def get_latest_snapshots(snapshot_type: str, limit_per_key: int = 1) -> list:
