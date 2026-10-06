@@ -259,13 +259,13 @@ def _get_claude_insight(stocks: list, arbitrage: list) -> str:
 
         # 1. PORTFEL INWESTORA (statyczny przykład)
         portfolio = {
-            "PKO.WA": {"ilosc": 74, "cena_zakupu": 95.50},
+            "PKO.WA": {"ilosc": 74, "cena_zakupu": 195.15},
             "PEO.WA": {"ilosc": 87, "cena_zakupu": 228.00},
             "ALR.WA": {"ilosc": 55, "cena_zakupu": 133.00},
             "KRU.WA": {"ilosc": 20, "cena_zakupu": 394.50},
             "KTY.WA": {"ilosc": 10, "cena_zakupu": 1263.30},
             "KGH.WA": {"ilosc": 21, "cena_zakupu": 335.60},
-            "PZU.WA": {"ilosc": 100, "cena_zakupu": 228.00},
+            "PZU.WA": {"ilosc": 100, "cena_zakupu": 73.82},
         }
 
         portfel_status = []
@@ -344,15 +344,19 @@ SYGNAŁY ARBITRAŻU:
 {context}
 
 Opieraj się wyłącznie na liczbach z powyższych sekcji, nie wymyślaj własnych.
-Jeśli sekcja o skuteczności sygnałów jest pusta lub niedojrzała, napisz wprost,
-że nie ma jeszcze historii, i nie oceniaj jakości sygnału na jej podstawie.
+
+Zasady:
+- Nie zalecaj kupna ani sprzedaży akcji z portfela. Opisz stan, ryzyka i co warto sprawdzić.
+- Różnica względem ceny zakupu to informacja, a nie powód do działania.
+- Brak historii skuteczności sygnału oznacza "nie wiadomo", a nie "sygnał jest zły".
 
 Napisz KONKRETNY komentarz (max 5 zdań):
 1. Co jest najciekawsze w portfelu dziś?
 2. Czy jest sygnał arbitrażu do działania?
-3. Jedna konkretna sugestia przed otwarciem sesji.
+3. Jedna rzecz do sprawdzenia przed otwarciem sesji.
 Podawaj liczby. Bez ogólników.
 """
+
 
         # 5. Zapytanie do Groq
         response = client.chat.completions.create(
@@ -427,7 +431,8 @@ def send_daily_report(
                 "title": f"🤖 Komentarz AI — {datetime.now().strftime('%d.%m.%Y')}",
                 "description": insight,
                 "color": 0x9b59b6,
-                "footer": {"text": "Groq • GPT-OSS 20B • GPW Analyst v2.0"},            }
+                "footer": {"text": "Groq • Llama 3.1 • GPW Analyst v2.0"},
+            }
         ]
     }
     try:
