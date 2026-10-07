@@ -245,7 +245,7 @@ def _get_claude_insight(stocks: list, arbitrage: list) -> str:
 
         # 1. PORTFEL INWESTORA (statyczny przykład)
         portfolio = {
-            "PKO.WA": {"ilosc": 74, "cena_zakupu": 195.15},
+            "PKO.WA": {"ilosc": 74, "cena_zakupu": 105.15},
             "PEO.WA": {"ilosc": 87, "cena_zakupu": 228.00},
             "ALR.WA": {"ilosc": 55, "cena_zakupu": 133.00},
             "KRU.WA": {"ilosc": 20, "cena_zakupu": 394.50},
@@ -290,24 +290,34 @@ def _get_claude_insight(stocks: list, arbitrage: list) -> str:
             ensure_ascii=False,
             indent=2,
         )
-
         # 3. SYGNAŁY ARBITRAŻU
         arb_alerts = [
             a for a in arbitrage or [] if a.get("signal") not in ("NEUTRAL", None)
         ]
+
+        def _arb_opis(a):
+            pair = a.get("pair") or ""
+            z = a.get("zscore") or 0
+            if "/" not in pair:
+                return None
+            x, y = [p.strip().replace(".WA", "") for p in pair.split("/")]
+            if z < 0:
+                return f"{x} relatywnie TAŃSZA od {y} (spread poniżej średniej)"
+            return f"{x} relatywnie DROŻSZA od {y} (spread powyżej średniej)"
 
         arb_json = json.dumps(
             [
                 {
                     "para": a.get("pair"),
                     "zscore": round(a.get("zscore") or 0, 2),
-                    "sygnał": a.get("signal"),
+                    "interpretacja": _arb_opis(a),
                     "score": a.get("entry_score"),
                 }
                 for a in arb_alerts
             ],
             ensure_ascii=False,
             indent=2,
+        )
         )
 
         # 3b. DZIENNIK SYGNAŁÓW + DANE HISTORYCZNE (liczy Python)
@@ -341,11 +351,11 @@ Napisz odpowiedź w DOKŁADNIE trzech ponumerowanych punktach i nic poza nimi
 (bez nagłówków, bez podsumowania, bez dodatkowych akapitów):
 1. Do 3 spółek z największym ruchem w ostatniej sesji: ruch ze znakiem i wolumen
    jako wielokrotność średniej.
-2. Sygnał arbitrażu: para, z-score i jedno zdanie, co to znaczy. Jeśli brak historii
-   skuteczności, napisz "brak historii" (to nie znaczy, że sygnał jest zły).
-3. Jedna rzecz do sprawdzenia przed otwarciem sesji, wynikająca z podanych danych.
-Każdy punkt maksymalnie 2 zdania. Liczby przepisuj dokładnie z danych, niczego nie zaokrąglaj
-i nie porównuj z progami, których nie ma w danych.
+2. Sygnał arbitrażu: para, z-score i opis z pola "interpretacja" własnymi słowami.
+   Nie używaj słów "kup", "sprzedaj", "kupno", "sprzedaż". Jeśli brak historii
+   skuteczności, napisz "brak historii".
+3. Jedna najbardziej nietypowa obserwacja w danych (np. wolumen, odległość od minimum
+   lub maksimum), jedno zdanie.
 """
 
 
@@ -363,7 +373,7 @@ i nie porównuj z progami, których nie ma w danych.
         if choice.finish_reason == "length":
             print("[Groq] odpowiedź ucięta przez limit tokenów")
 
-        return response.choices[0].message.content or "Analiza AI niedostępna dziś."
+        return text or "Analiza AI niedostępna dziś."
     
     except Exception as e:
         import traceback
@@ -425,10 +435,8 @@ def send_daily_report(
     insight_payload = {
         "embeds": [
             {
-                "title": f"🤖 Komentarz AI — {datetime.now().strftime('%d.%m.%Y')}",
-                "description": insight,
-                "color": 0x9b59b6,
-                "footer": {"text": "Groq • GPT-OSS 20B • GPW Analyst v2.0"},            }
+                
+            }
         ]
     }
     try:
