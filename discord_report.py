@@ -337,7 +337,9 @@ Zasady:
 - Brak historii skuteczności sygnału oznacza "nie wiadomo", a nie "sygnał jest zły".
 
 Napisz KONKRETNY komentarz (max 5 zdań):
-1. Co jest najciekawsze w portfelu dziś?
+1. Co w portfelu wymaga uwagi dziś? Oceniaj po ruchu z ostatnich sesji, wolumenie i 
+odległości od minimum/maksimum z sekcji DANE POLICZONE. Zysk lub stratę względem 
+ceny zakupu podaj tylko jako tło, nie jako powód wyboru.
 2. Czy jest sygnał arbitrażu do działania?
 3. Jedna rzecz do sprawdzenia przed otwarciem sesji.
 Podawaj liczby. Bez ogólników.

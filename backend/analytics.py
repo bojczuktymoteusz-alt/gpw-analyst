@@ -52,6 +52,7 @@ def ticker_features(close, volume, t):
 
     return {
         "ticker": t.replace(".WA", ""),
+        "ret1": float((last / s.iloc[-2] - 1) * 100),
         "ret5": float((last / s.iloc[-1 - n5] - 1) * 100),
         "n5": n5,
         "ret20": float((last / s.iloc[-1 - n20] - 1) * 100),
@@ -202,7 +203,7 @@ def build_context(arb_alerts, extra_tickers=()) -> str:
             f = feats[t]
             vr = f"wolumen x{f['vol_ratio']:.1f} średniej" if f["vol_ratio"] else "wolumen b/d"
             lines.append(
-                f"- {f['ticker']}: {f['n5']}s {f['ret5']:+.1f}%, {f['n20']}s {f['ret20']:+.1f}%, "
+                f"- {f['ticker']}: 1s {f['ret1']:+.1f}%, {f['n5']}s {f['ret5']:+.1f}%, {f['n20']}s {f['ret20']:+.1f}%, "
                 f"zmienność dzienna {f['vol']:.1f}%, {vr}, "
                 f"{f['from_low']:+.1f}% od minimum, {f['from_high']:+.1f}% od maksimum okna"
             )
