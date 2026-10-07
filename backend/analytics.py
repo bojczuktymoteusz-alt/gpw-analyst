@@ -190,10 +190,11 @@ def build_context(arb_alerts, extra_tickers=()) -> str:
         feats = {t: f for t, f in feats.items() if f}
 
         # dokładamy największe ruchy 5-sesyjne i skoki wolumenu
+        by_move1 = sorted(feats, key=lambda t: abs(feats[t]["ret1"]), reverse=True)[:3]
         by_move = sorted(feats, key=lambda t: abs(feats[t]["ret5"]), reverse=True)[:5]
         by_vol = [t for t in sorted(feats, key=lambda t: feats[t]["vol_ratio"] or 0, reverse=True)[:3]
                   if (feats[t]["vol_ratio"] or 0) >= 1.5]
-        chosen = list(dict.fromkeys([t for t in tickers if t in feats] + by_move + by_vol))
+        chosen = list(dict.fromkeys([t for t in tickers if t in feats] + by_move1 + by_move + by_vol))
 
         lines = [
             "DANE POLICZONE PRZEZ PYTHON (nie zmieniaj liczb, tylko je interpretuj):",
@@ -203,7 +204,7 @@ def build_context(arb_alerts, extra_tickers=()) -> str:
             f = feats[t]
             vr = f"wolumen x{f['vol_ratio']:.1f} średniej" if f["vol_ratio"] else "wolumen b/d"
             lines.append(
-                f"- {f['ticker']}: 1s {f['ret1']:+.1f}%, {f['n5']}s {f['ret5']:+.1f}%, {f['n20']}s {f['ret20']:+.1f}%, "
+                f"- {f['ticker']}: ostatnia sesja {f['ret1']:+.1f}%, {f['n5']} sesji {f['ret5']:+.1f}%, {f['n20']} sesji {f['ret20']:+.1f}%, "
                 f"zmienność dzienna {f['vol']:.1f}%, {vr}, "
                 f"{f['from_low']:+.1f}% od minimum, {f['from_high']:+.1f}% od maksimum okna"
             )

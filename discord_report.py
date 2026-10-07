@@ -318,7 +318,6 @@ def _get_claude_insight(stocks: list, arbitrage: list) -> str:
             ensure_ascii=False,
             indent=2,
         )
-        )
 
         # 3b. DZIENNIK SYGNAŁÓW + DANE HISTORYCZNE (liczy Python)
         log_signals(arb_alerts)
