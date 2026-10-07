@@ -25,6 +25,9 @@ jobs:
         run: |
           pip install requests matplotlib pandas python-dotenv yfinance scikit-learn numpy groq
 
+      - name: Odśwież historię cen
+        run: python backend/daily_snapshot.py
+
       - name: Wyslij raport
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_PL }}
@@ -43,7 +46,7 @@ jobs:
           if git diff --cached --quiet; then
             echo "Brak zmian"
           else
-            git commit -m "dziennik sygnałów $(date -u +%F)"
+            git commit -m "dane i dziennik sygnałów $(date -u +%F)"
             git pull --rebase origin ${{ github.ref_name }}
             git push
           fi
