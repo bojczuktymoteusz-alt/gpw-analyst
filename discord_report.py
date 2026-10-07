@@ -335,6 +335,8 @@ Zasady:
 - Nie zalecaj kupna ani sprzedaży akcji z portfela. Opisz stan, ryzyka i co warto sprawdzić.
 - Różnica względem ceny zakupu to informacja, a nie powód do działania.
 - Brak historii skuteczności sygnału oznacza "nie wiadomo", a nie "sygnał jest zły".
+- Odpowiedz w trzech ponumerowanych punktach, każdy 1-2 pełne zdania. Nie urywaj zdań.
+- Przy spółkach o wolumenie poniżej 0.3 średniej zaznacz, że ruch jest mało wiarygodny.
 
 Napisz KONKRETNY komentarz (max 5 zdań):
 1. Co w portfelu wymaga uwagi dziś? Oceniaj po ruchu z ostatnich sesji, wolumenie i 
@@ -350,9 +352,15 @@ Podawaj liczby. Bez ogólników.
         response = client.chat.completions.create(
             model="openai/gpt-oss-20b",
             messages=[{"role": "user", "content": prompt}],
-            max_tokens=1500,
+            max_completion_tokens=3000,
             temperature=0.3,
+            reasoning_effort="low",
         )
+
+        choice = response.choices[0]
+        text = (choice.message.content or "").strip()
+        if choice.finish_reason == "length":
+            print("[Groq] odpowiedź ucięta przez limit tokenów")
 
         return response.choices[0].message.content or "Analiza AI niedostępna dziś."
     
