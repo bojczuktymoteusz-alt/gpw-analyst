@@ -337,6 +337,8 @@ Zasady:
 - Brak historii skuteczności sygnału oznacza "nie wiadomo", a nie "sygnał jest zły".
 - Odpowiedz w trzech ponumerowanych punktach, każdy 1-2 pełne zdania. Nie urywaj zdań.
 - Przy spółkach o wolumenie poniżej 0.3 średniej zaznacz, że ruch jest mało wiarygodny.
+- Znak plus oznacza wzrost, minus spadek. Zawsze podawaj zmiany ze znakiem, np. "+3,9%".
+- Punkt 1: maksymalnie 3 spółki, każda w jednym zdaniu (ruch z ostatniej sesji i wolumen).
 
 Napisz KONKRETNY komentarz (max 5 zdań):
 1. Co w portfelu wymaga uwagi dziś? Oceniaj po ruchu z ostatnich sesji, wolumenie i 
