@@ -332,21 +332,20 @@ SYGNAŁY ARBITRAŻU:
 Opieraj się wyłącznie na liczbach z powyższych sekcji, nie wymyślaj własnych.
 
 Zasady:
-- Nie zalecaj kupna ani sprzedaży akcji z portfela. Opisz stan, ryzyka i co warto sprawdzić.
+- Nie zalecaj kupna ani sprzedaży akcji.
 - Różnica względem ceny zakupu to informacja, a nie powód do działania.
-- Brak historii skuteczności sygnału oznacza "nie wiadomo", a nie "sygnał jest zły".
-- Odpowiedz w trzech ponumerowanych punktach, każdy 1-2 pełne zdania. Nie urywaj zdań.
-- Przy spółkach o wolumenie poniżej 0.3 średniej zaznacz, że ruch jest mało wiarygodny.
 - Znak plus oznacza wzrost, minus spadek. Zawsze podawaj zmiany ze znakiem, np. "+3,9%".
-- Punkt 1: maksymalnie 3 spółki, każda w jednym zdaniu (ruch z ostatniej sesji i wolumen).
+- Przy spółkach o wolumenie poniżej 0.3 średniej zaznacz, że ruch jest mało wiarygodny.
 
-Napisz KONKRETNY komentarz (max 5 zdań):
-1. Co w portfelu wymaga uwagi dziś? Oceniaj po ruchu z ostatnich sesji, wolumenie i 
-odległości od minimum/maksimum z sekcji DANE POLICZONE. Zysk lub stratę względem 
-ceny zakupu podaj tylko jako tło, nie jako powód wyboru.
-2. Czy jest sygnał arbitrażu do działania?
-3. Jedna rzecz do sprawdzenia przed otwarciem sesji.
-Podawaj liczby. Bez ogólników.
+Napisz odpowiedź w DOKŁADNIE trzech ponumerowanych punktach i nic poza nimi
+(bez nagłówków, bez podsumowania, bez dodatkowych akapitów):
+1. Do 3 spółek z największym ruchem w ostatniej sesji: ruch ze znakiem i wolumen
+   jako wielokrotność średniej.
+2. Sygnał arbitrażu: para, z-score i jedno zdanie, co to znaczy. Jeśli brak historii
+   skuteczności, napisz "brak historii" (to nie znaczy, że sygnał jest zły).
+3. Jedna rzecz do sprawdzenia przed otwarciem sesji, wynikająca z podanych danych.
+Każdy punkt maksymalnie 2 zdania. Liczby przepisuj dokładnie z danych, niczego nie zaokrąglaj
+i nie porównuj z progami, których nie ma w danych.
 """
 
 
