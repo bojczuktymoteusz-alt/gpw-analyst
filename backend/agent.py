@@ -155,6 +155,14 @@ def log_agent_signals(signals, close):
         print(f"[agent] dziennik: {e}")
 
 
+def _benchmark_return(close, idx, h):
+    """Średni zwrot (%) wszystkich spółek w danych (równa waga) od sesji idx do idx+h.
+    To przybliżenie rynku: WIG20 + kilka dodatkowych spółek z pliku cen."""
+    a, b = close.iloc[idx], close.iloc[idx + h]
+    r = (b / a - 1).replace([float("inf"), float("-inf")], float("nan")).dropna()
+    return float(r.mean() * 100) if len(r) else None
+
+
 def agent_track_record(close):
     """Zwraca {(akcja, horyzont): [wyniki pozycji w %]} dla dojrzałych sygnałów."""
     res = {}
@@ -174,7 +182,14 @@ def agent_track_record(close):
                 if idx + h < len(close):
                     p0, p1 = s.iloc[idx], s.iloc[idx + h]
                     if pd.notna(p0) and pd.notna(p1) and p0:
-                        res.setdefault((e["action"], h), []).append(sign * (p1 / p0 - 1) * 100)
+                        ret = (p1 / p0 - 1) * 100
+                        bench = _benchmark_return(close, idx, h)
+                        if bench is None:
+                            continue
+                        # (wynik bezwzględny, wynik ponad rynek) z punktu widzenia pozycji
+                        res.setdefault((e["action"], h), []).append(
+                            (sign * ret, sign * (ret - bench))
+                        )
     except Exception as e:
         print(f"[agent] ocena sygnałów: {e}")
     return res
@@ -185,7 +200,14 @@ def _record_suffix(action, rec):
     for h in HORIZONS:
         v = rec.get((action, h))
         if v:
-            parts.append(f"{h}s: {sum(x > 0 for x in v)}/{len(v)} trafionych, śr. {sum(v) / len(v):+.1f}%")
+            n = len(v)
+            beat = sum(1 for _, ex in v if ex > 0)
+            mean_abs = sum(a for a, _ in v) / n
+            mean_ex = sum(ex for _, ex in v) / n
+            parts.append(
+                f"{h} sesji: {beat}/{n} lepiej niż rynek, śr. {mean_ex:+.1f}% wobec rynku "
+                f"({mean_abs:+.1f}% bezwzględnie)"
+            )
     return f" | dotychczas {action} - " + "; ".join(parts) if parts else ""
 
 
