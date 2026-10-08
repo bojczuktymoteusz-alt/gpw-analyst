@@ -366,13 +366,12 @@ Napisz odpowiedź w DOKŁADNIE trzech ponumerowanych punktach i nic poza nimi
             temperature=0.3,
             reasoning_effort="low",
         )
-
         choice = response.choices[0]
         text = (choice.message.content or "").strip()
-        if choice.finish_reason == "length":
-            print("[Groq] odpowiedź ucięta przez limit tokenów")
+        print(f"[Groq] finish_reason={choice.finish_reason}, długość odpowiedzi={len(text)}")
 
         return text or "Analiza AI niedostępna dziś."
+
     
     except Exception as e:
         import traceback
@@ -431,16 +430,21 @@ def send_daily_report(
     # Komentarz AI (Groq)
     print("Pytam Groq o komentarz...")
     insight = _get_claude_insight(stocks, arbitrage)
+    if not insight or not insight.strip():
+        insight = "Analiza AI niedostępna dziś."
     insight_payload = {
         "embeds": [
             {
-                
+                "title": f"🤖 Komentarz AI — {datetime.now().strftime('%d.%m.%Y')}",
+                "description": insight[:4000],
+                "color": 0x9b59b6,
+                "footer": {"text": "Groq • GPT-OSS 20B • GPW Analyst v2.0"},
             }
         ]
     }
     try:
-        requests.post(webhook_url, json=insight_payload, timeout=30)
-        print("Komentarz AI wysłany.")
+        r = requests.post(webhook_url, json=insight_payload, timeout=30)
+        print(f"Komentarz AI: Discord odpowiedział {r.status_code} {r.text[:200]}")
     except Exception as e:
         print(f"Błąd wysyłania komentarza AI: {e}")
 
