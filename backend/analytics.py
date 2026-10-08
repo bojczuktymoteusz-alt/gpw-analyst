@@ -7,8 +7,10 @@ Analityka dla raportu GPW (backend/analytics.py)
 Wszystkie liczby liczy Python. Model językowy dostaje gotowy tekst i tylko go interpretuje.
 Żadna funkcja nie rzuca wyjątku na zewnątrz - raport ma się wysłać nawet przy braku danych.
 """
+from datetime import datetime, timezone
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -28,6 +30,27 @@ def _load_prices():
     close = df.pivot(index="date", columns="ticker", values="close").sort_index()
     volume = df.pivot(index="date", columns="ticker", values="volume").sort_index()
     return close, volume
+
+
+def data_freshness_warning():
+    """Tekst ostrzeżenia, gdy ostatnia sesja w danych jest wyraźnie nieaktualna; w przeciwnym razie None.
+    Próg: co najmniej 2 dni robocze od ostatniej sesji (pojedyncza przerwa bywa świętem)."""
+    try:
+        close, _ = _load_prices()
+        if close is None:
+            return "Brak pliku z historią cen (data/daily_prices.csv)."
+        last = close.index.max().date()
+        today = datetime.now(timezone.utc).date()
+        gap = int(np.busday_count(last, today))
+        if gap >= 2:
+            return (
+                f"Ostatnia sesja w danych: {last} ({gap} dni roboczych temu). "
+                f"Sprawdź, czy pobieranie cen działa (mogło też być święto)."
+            )
+        return None
+    except Exception as e:
+        print(f"[analytics] data_freshness_warning: {e}")
+        return None
 
 
 # ---------------------------------------------------------------- 2. cechy

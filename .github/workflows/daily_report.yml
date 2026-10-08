@@ -4,6 +4,11 @@ on:
   schedule:
     - cron: '30 6 * * 1-5'
   workflow_dispatch:
+    inputs:
+      test_alert:
+        description: 'Wymuś błąd, żeby przetestować alert'
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -15,6 +20,10 @@ jobs:
     steps:
       - name: Checkout kodu
         uses: actions/checkout@v4
+
+      - name: Wymuszony błąd (test alertu)
+        if: ${{ inputs.test_alert }}
+        run: exit 1
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -50,3 +59,13 @@ jobs:
             git pull --rebase origin ${{ github.ref_name }}
             git push
           fi
+
+      - name: Alert o awarii
+        if: failure()
+        env:
+          WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_PL }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          curl -sS -H "Content-Type: application/json" \
+            -d "{\"content\": \"⚠️ Raport WIG20 nie wyszedł. Sprawdź przebieg: ${RUN_URL}\"}" \
+            "$WEBHOOK" || true

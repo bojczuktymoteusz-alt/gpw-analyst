@@ -7,7 +7,7 @@ from backend.database import init_db
 
 from backend.database import save_daily_snapshot
 from backend.data_fetcher import get_all_stocks, get_all_arbitrage
-from backend.analytics import log_signals, build_context
+from backend.analytics import log_signals, build_context, data_freshness_warning
 
 
 
@@ -405,6 +405,14 @@ def send_daily_report(
         print(f"Błąd pobierania arbitrażu: {e}")
         arbitrage = []
 
+    # Ostrzeżenie o nieaktualnych danych historycznych
+    warning = data_freshness_warning()
+    if warning:
+        try:
+            requests.post(webhook_url, json={"content": f"⚠️ {warning}"}, timeout=30)
+        except Exception as e:
+            print(f"Błąd wysyłania ostrzeżenia: {e}")
+        
     # Obraz tabeli
     if image_path:
         with open(image_path, "rb") as f:
