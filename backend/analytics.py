@@ -202,7 +202,12 @@ def build_context(arb_alerts, extra_tickers=()) -> str:
         ]
         for t in chosen:
             f = feats[t]
-            vr = f"wolumen x{f['vol_ratio']:.1f} średniej" if f["vol_ratio"] else "wolumen b/d"
+            if f["vol_ratio"]:
+                vr = f"wolumen x{f['vol_ratio']:.1f} średniej"
+                if f["vol_ratio"] < 0.3:
+                    vr += " (ruch mało wiarygodny)"
+            else:
+                vr = "wolumen b/d"
             lines.append(
                 f"- {f['ticker']}: ostatnia sesja {f['ret1']:+.1f}%, {f['n5']} sesji {f['ret5']:+.1f}%, {f['n20']} sesji {f['ret20']:+.1f}%, "
                 f"zmienność dzienna {f['vol']:.1f}%, {vr}, "
@@ -210,6 +215,16 @@ def build_context(arb_alerts, extra_tickers=()) -> str:
             )
         if n_days < 21:
             lines.append(f"(Uwaga: okno 20-sesyjne skrócone do dostępnych {n_days - 1} sesji.)")
+
+        with_vol = {t: f for t, f in feats.items() if f["vol_ratio"]}
+        if with_vol:
+            hi = max(with_vol, key=lambda t: with_vol[t]["vol_ratio"])
+            lo = min(with_vol, key=lambda t: with_vol[t]["vol_ratio"])
+            lines.append(
+                f"Skrajne wolumeny w ostatniej sesji (cały WIG20 + portfel): "
+                f"najwyższy {with_vol[hi]['ticker']} x{with_vol[hi]['vol_ratio']:.1f} średniej, "
+                f"najniższy {with_vol[lo]['ticker']} x{with_vol[lo]['vol_ratio']:.1f} średniej."
+            )
 
         lines.append(track_record_text(active_pairs))
         return "\n".join(lines)

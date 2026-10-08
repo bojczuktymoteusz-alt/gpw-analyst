@@ -344,17 +344,16 @@ Zasady:
 - Nie zalecaj kupna ani sprzedaży akcji.
 - Różnica względem ceny zakupu to informacja, a nie powód do działania.
 - Znak plus oznacza wzrost, minus spadek. Zawsze podawaj zmiany ze znakiem, np. "+3,9%".
-- Przy spółkach o wolumenie poniżej 0.3 średniej zaznacz, że ruch jest mało wiarygodny.
 
 Napisz odpowiedź w DOKŁADNIE trzech ponumerowanych punktach i nic poza nimi
 (bez nagłówków, bez podsumowania, bez dodatkowych akapitów):
 1. Do 3 spółek z największym ruchem w ostatniej sesji: ruch ze znakiem i wolumen
    jako wielokrotność średniej.
-2. Sygnał arbitrażu: para, z-score i opis z pola "interpretacja" własnymi słowami.
-   Nie używaj słów "kup", "sprzedaj", "kupno", "sprzedaż". Jeśli brak historii
-   skuteczności, napisz "brak historii".
-3. Jedna najbardziej nietypowa obserwacja w danych (np. wolumen, odległość od minimum
-   lub maksimum), jedno zdanie.
+2. Sygnał arbitrażu: para, z-score i opis z pola "interpretacja" własnymi słowami
+   (np. "spread poniżej średniej"). Nie używaj słów "kup", "sprzedaj", "kupno",
+   "sprzedaż". Jeśli brak historii skuteczności, napisz "brak historii".
+3. Jedno zdanie o obserwacji z linii "Skrajne wolumeny" albo o spółce z dużą odległością
+   od minimum lub maksimum okna. Powtórz dokładnie liczby z danych.
 """
 
 
