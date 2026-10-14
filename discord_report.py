@@ -8,6 +8,7 @@ from backend.database import init_db
 from backend.database import save_daily_snapshot
 from backend.data_fetcher import get_all_stocks, get_all_arbitrage
 from backend.analytics import log_signals, build_context, data_freshness_warning
+from backend.portfolio_alerts import portfolio_alert_payload, load_portfolio
 
 
 
@@ -244,15 +245,7 @@ def _get_claude_insight(stocks: list, arbitrage: list) -> str:
         client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
 
         # 1. PORTFEL INWESTORA (statyczny przykład)
-        portfolio = {
-            "PKO.WA": {"ilosc": 74, "cena_zakupu": 105.15},
-            "PEO.WA": {"ilosc": 87, "cena_zakupu": 228.00},
-            "ALR.WA": {"ilosc": 55, "cena_zakupu": 133.00},
-            "KRU.WA": {"ilosc": 20, "cena_zakupu": 394.50},
-            "KTY.WA": {"ilosc": 10, "cena_zakupu": 1263.30},
-            "KGH.WA": {"ilosc": 21, "cena_zakupu": 335.60},
-            "PZU.WA": {"ilosc": 100, "cena_zakupu": 73.82},
-        }
+        portfolio = load_portfolio()
 
         portfel_status = []
         for ticker, info in portfolio.items():
@@ -412,6 +405,22 @@ def send_daily_report(
             requests.post(webhook_url, json={"content": f"⚠️ {warning}"}, timeout=30)
         except Exception as e:
             print(f"Błąd wysyłania ostrzeżenia: {e}")
+    flags = event_flags_text()
+    if flags:
+        try:
+            requests.post(webhook_url, json={"content": flags}, timeout=30)
+        except Exception as e:
+            print(f"Błąd wysyłania ostrzeżenia o ruchu: {e}")
+
+
+    # Alert portfela (próg zysku / spadek od szczytu)
+        try:
+            alert_payload = portfolio_alert_payload()
+            if alert_payload:
+                requests.post(webhook_url, json=alert_payload, timeout=30)
+                print("Alert portfela wysłany.")
+        except Exception as e:
+            print(f"Błąd alertu portfela: {e}")
         
     # Obraz tabeli
     if image_path:
@@ -445,7 +454,7 @@ def send_daily_report(
                 "title": f"🤖 Komentarz AI — {datetime.now().strftime('%d.%m.%Y')}",
                 "description": insight[:4000],
                 "color": 0x9b59b6,
-                "footer": {"text": "Groq • GPT-OSS 20B • GPW Analyst v2.0"},
+                "footer": {"text": f"Groq • GPT-OSS 20B • {session_footer()}"},
             }
         ]
     }
@@ -505,7 +514,10 @@ def send_daily_report(
     except requests.exceptions.RequestException as e:
         print(f"Błąd połączenia z Discord: {e}")
         return False
-
+from backend.report_helpers import (
+    _build_embed, _build_opportunities_embed, _build_agent_embed,
+    session_footer, event_flags_text,
+)
 
 if __name__ == "__main__":
     # Użyj swojego webhooka tutaj
