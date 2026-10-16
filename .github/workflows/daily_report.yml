@@ -13,6 +13,12 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: gpw-analyst-report-${{ github.ref }}
+  # Zachowaj kolejkę raportów zamiast zastępować oczekujące uruchomienia.
+  # GitHub Actions przechowuje maksymalnie 100 oczekujących uruchomień w grupie.
+  queue: max
+
 jobs:
   send-report:
     runs-on: ubuntu-24.04
@@ -20,6 +26,8 @@ jobs:
     steps:
       - name: Checkout kodu
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Wymuszony błąd (test alertu)
         if: ${{ inputs.test_alert }}
@@ -47,18 +55,36 @@ jobs:
           python discord_report.py
           python discord_report_en.py
 
-      - name: Zapisz dziennik sygnałów
+      - name: Zapisz zweryfikowane dane raportu
+        if: success()
+        shell: bash
         run: |
+          set -euo pipefail
+          branch="${GITHUB_REF_NAME}"
           git config user.name "github-actions"
           git config user.email "actions@github.com"
-          git add -A data
+
+          # Lista plików do zachowania; portfolio.csv i inne pliki data/ są wykluczone.
+          for data_file in \
+            data/daily_prices.csv \
+            data/signal_journal.csv \
+            data/agent_recommendations.jsonl \
+            data/agent_outcomes.jsonl
+          do
+            if [[ -f "$data_file" ]]; then
+              git add -- "$data_file"
+            fi
+          done
+
           if git diff --cached --quiet; then
             echo "Brak zmian"
-          else
-            git commit -m "dane i dziennik sygnałów $(date -u +%F)"
-            git pull --rebase origin ${{ github.ref_name }}
-            git push
+            exit 0
           fi
+
+          git commit -m "dane i dzienniki sygnałów $(date -u +%F)"
+          git fetch origin "$branch"
+          git merge --no-edit FETCH_HEAD
+          git push origin "HEAD:$branch"
 
       - name: Alert o awarii
         if: failure()
